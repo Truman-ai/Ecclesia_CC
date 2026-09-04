@@ -1,7 +1,7 @@
 {
-  "name": "하늘의 예루살렘 찬송가",
-  "short_name": "예루살렘 찬송가",
-  "description": "하늘의 예루살렘 모임 찬송가 가사",
+  "name": "에클레시아 춘천 찬송가",
+  "short_name": "춘천 찬송가",
+  "description": "에클레시아 춘천 찬송가 가사",
   "lang": "ko",
   "start_url": "./index.html",
   "scope": "./",

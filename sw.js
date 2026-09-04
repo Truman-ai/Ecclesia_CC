@@ -1,6 +1,6 @@
-/* 하늘의 예루살렘 찬송가 — 서비스 워커
+/* 에클레시아 춘천 찬송가 — 서비스 워커
    가사를 수정하면 아래 CACHE 버전 숫자를 올리세요 (예: v1 -> v2). */
-const CACHE = 'hj-hymnal-v3';
+const CACHE = 'hj-hymnal-v4';
 const ASSETS = [
   './',
   './index.html',
