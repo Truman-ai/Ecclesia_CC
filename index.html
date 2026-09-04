@@ -594,13 +594,24 @@ function renderPresent(h){
 
   function draw(){
     const b = slides[i];
-    stage.innerHTML = `
+    content.innerHTML = `
       <div class="pcontent">
         ${b.label?`<div class="plabel ${b.type==='refrain'?'refrain':''}">${escapeHtml(b.label)}</div>`:''}
         <p class="${b.type==='refrain'?'refrain':''}">${escapeHtml(b.text)}</p>
       </div>`;
     mid.textContent = `${h.n}장 · ${i+1}/${slides.length}`;
     dots.innerHTML = slides.map((_,k)=>`<i class="${k===i?'on':''}"></i>`).join('');
+    fit();
+  }
+  function fit(){
+    const p = content.querySelector('p'); if(!p) return;
+    p.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(p).fontSize);
+    const avail = stage.clientHeight - 24;
+    let guard = 0;
+    while(content.scrollHeight > avail && size > 13 && guard++ < 60){
+      size -= 2; p.style.fontSize = size + 'px';
+    }
   }
   function move(d){
     const ni = i + d;
@@ -616,6 +627,7 @@ function renderPresent(h){
         <button id="pLight" aria-label="화면 밝기 전환">${pLight?'🌙':'☀️'}</button>
       </div>
       <div class="pstage" id="pStage">
+        <div id="pContent"></div>
         <div class="ptap"><span data-d="-1"></span><span data-d="1"></span></div>
       </div>
       <div class="dots" id="pDots"></div>
@@ -624,6 +636,7 @@ function renderPresent(h){
   `;
   const pv = document.getElementById('pv');
   const stage = document.getElementById('pStage');
+  const content = document.getElementById('pContent');
   const mid = document.getElementById('pMid');
   const dots = document.getElementById('pDots');
   draw();
@@ -634,7 +647,8 @@ function renderPresent(h){
     pv.classList.toggle('light', pLight);
     document.getElementById('pLight').textContent = pLight?'🌙':'☀️';
   };
-  stage.querySelector('.ptap').addEventListener('click', e=>{
+  const tap = stage.querySelector('.ptap');
+  if(tap) tap.addEventListener('click', e=>{
     const t = e.target.closest('span'); if(!t) return;
     move(parseInt(t.dataset.d,10));
   });
@@ -656,9 +670,14 @@ function renderPresent(h){
   };
   window.addEventListener('keydown', presentKeyHandler);
 
+  presentResizeHandler = ()=> fit();
+  window.addEventListener('resize', presentResizeHandler);
+  window.addEventListener('orientationchange', presentResizeHandler);
+
   requestWakeLock();
 }
 let presentKeyHandler = null;
+let presentResizeHandler = null;
 
 /* ---------- 화면 꺼짐 방지 ---------- */
 let wakeLock = null;
@@ -667,6 +686,7 @@ async function requestWakeLock(){
 }
 function releaseWakeLock(){
   if(presentKeyHandler){ window.removeEventListener('keydown', presentKeyHandler); presentKeyHandler = null; }
+  if(presentResizeHandler){ window.removeEventListener('resize', presentResizeHandler); window.removeEventListener('orientationchange', presentResizeHandler); presentResizeHandler = null; }
   try{ wakeLock && wakeLock.release(); }catch(e){}
   wakeLock = null;
 }
