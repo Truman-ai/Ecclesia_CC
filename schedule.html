@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fdf7ea">
+<title>일정 · 에클레시아 춘천</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#fdf7ea; --surface:#ffffff; --ink:#2c2013; --muted:#8a7f6c; --line:#ece2cc;
+    --accent:#ff842c; --accent-ink:#9a4a10; --sun:#d1603f; --sat:#3e6fae;
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  .app{max-width:460px;margin:0 auto;min-height:100%;padding-bottom:calc(var(--safe-b) + 24px)}
+
+  .bar{
+    display:flex;align-items:center;gap:10px;
+    padding:calc(var(--safe-t) + 14px) 18px 12px;
+  }
+  .bar a.home{width:30px;height:30px;flex:none;display:block}
+  .bar a.home img{width:100%;height:100%;border-radius:8px;display:block}
+  .bar h1{flex:1;font-size:18px;font-weight:800;letter-spacing:-.01em}
+
+  .cal{margin:6px 18px 0;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px 14px 10px}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 14px}
+  .cal-head .mo{font-size:16px;font-weight:800;letter-spacing:-.01em}
+  .cal-head button{
+    width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:var(--bg);
+    font-size:15px;color:var(--ink);
+  }
+  .cal-head button:active{background:var(--line)}
+  .wk{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;font-weight:700;color:var(--muted);padding-bottom:6px}
+  .wk span:first-child{color:var(--sun)}
+  .wk span:last-child{color:var(--sat)}
+  .days{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+  .day{
+    position:relative;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;font-size:13px;font-weight:600;border-radius:12px;
+  }
+  .day.blank{visibility:hidden}
+  .day.pick:active{background:var(--line)}
+  .day.sun .n{color:var(--sun)}
+  .day.sat .n{color:var(--sat)}
+  .day .n{position:relative;z-index:1;width:26px;height:26px;display:grid;place-items:center;border-radius:50%}
+  .day.today .n{background:var(--ink);color:var(--bg)}
+  .day.selected .n{box-shadow:inset 0 0 0 2px var(--accent-ink)}
+  .day.today.selected .n{box-shadow:inset 0 0 0 2px var(--accent)}
+  .day .dots{display:flex;align-items:center;gap:3px;height:6px}
+  .day .dots i{width:5px;height:5px;border-radius:50%;flex:none}
+  .day .dots .more{width:auto;height:auto;border-radius:0;font-size:8px;font-weight:800;color:var(--muted);line-height:1}
+
+  .section-title-row{display:flex;align-items:baseline;justify-content:space-between;margin:26px 18px 10px}
+  .section-title{font-size:13px;font-weight:800;color:var(--muted);letter-spacing:.02em;text-transform:uppercase}
+  .section-title .label{text-transform:none;color:var(--ink);font-size:14px}
+  .clear{font-size:12px;font-weight:700;color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
+
+  .events{padding:0 18px;display:flex;flex-direction:column;gap:10px}
+  .ev{
+    display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);
+    border-radius:16px;padding:14px 16px;
+  }
+  .ev .bar-color{width:4px;align-self:stretch;border-radius:4px;flex:none}
+  .ev .body{flex:1;min-width:0}
+  .ev .title{font-size:15px;font-weight:700;letter-spacing:-.01em}
+  .ev .date{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .ev .dday{
+    flex:none;font-size:12px;font-weight:800;color:var(--accent-ink);
+    background:color-mix(in srgb, var(--accent) 16%, transparent);
+    padding:5px 9px;border-radius:999px;white-space:nowrap;
+  }
+  .empty{padding:30px 18px;text-align:center;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+/* 등록 일정 — 날짜만(YYYY-MM-DD), 기간 등록. color는 달력 점·카드 색 */
+const PALETTE = ['#ff842c', '#7f8f4a', '#a9835a', '#3e6fae', '#c2564f', '#8a63b0'];
+const EVENTS_RAW = [
+  { title:"토론토 노동절집회",       start:"2026-09-05", end:"2026-09-08" },
+  { title:"한국 가을집회",           start:"2026-10-08", end:"2026-10-11" },
+  { title:"진순자매님 출국",         start:"2026-10-13", end:"2026-10-13" },
+  { title:"태국 집회",               start:"2026-10-16", end:"2026-10-18" },
+  { title:"토론토 자매님들 방문",     start:"2026-10-30", end:"2026-11-02" }
+];
+const EVENTS = EVENTS_RAW.map((e,i)=>({ ...e, color: PALETTE[i % PALETTE.length] }));
+
+const WD = ['일','월','화','수','목','금','토'];
+const pad2 = n => String(n).padStart(2,'0');
+const ymd = (y,m,d) => `${y}-${pad2(m)}-${pad2(d)}`;
+const parseYMD = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const fmtMD = s => { const dt = parseYMD(s); return `${dt.getMonth()+1}월 ${dt.getDate()}일(${WD[dt.getDay()]})`; };
+const daysBetween = (a,b) => Math.round((parseYMD(b) - parseYMD(a)) / 86400000);
+
+const today = new Date();
+const todayStr = ymd(today.getFullYear(), today.getMonth()+1, today.getDate());
+let viewY = today.getFullYear(), viewM = today.getMonth(); // 0-indexed
+let selectedDate = null; // 'YYYY-MM-DD' | null
+
+function eventsOn(dateStr){
+  return EVENTS.filter(e => e.start <= dateStr && dateStr <= e.end);
+}
+
+function withDist(e){
+  let dist, status;
+  if(todayStr < e.start){ dist = daysBetween(todayStr, e.start); status = 'upcoming'; }
+  else if(todayStr > e.end){ dist = daysBetween(e.end, todayStr); status = 'past'; }
+  else { dist = 0; status = 'ongoing'; }
+  return { ...e, dist, status };
+}
+
+function nearestEvents(){
+  return EVENTS.map(withDist).sort((a,b)=>{
+    const rank = s => s==='past' ? 1 : 0;
+    if(rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
+    return a.dist - b.dist;
+  }).slice(0,3);
+}
+
+function ddayLabel(e){
+  return e.status==='ongoing' ? '진행중' : e.status==='past' ? '종료' : `D-${e.dist}`;
+}
+
+function eventCard(e){
+  return `
+    <div class="ev">
+      <div class="bar-color" style="background:${e.color}"></div>
+      <div class="body">
+        <div class="title">${escapeHtml(e.title)}</div>
+        <div class="date">${e.start === e.end ? fmtMD(e.start) : `${fmtMD(e.start)} ~ ${fmtMD(e.end)}`}</div>
+      </div>
+      <div class="dday">${ddayLabel(e)}</div>
+    </div>`;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const first = new Date(viewY, viewM, 1);
+  const firstWD = first.getDay();
+  const daysInMonth = new Date(viewY, viewM+1, 0).getDate();
+  const totalCells = Math.ceil((firstWD + daysInMonth) / 7) * 7;
+
+  let cells = '';
+  for(let i=0; i<totalCells; i++){
+    const dayNum = i - firstWD + 1;
+    if(dayNum < 1 || dayNum > daysInMonth){ cells += `<div class="day blank"></div>`; continue; }
+    const dateStr = ymd(viewY, viewM+1, dayNum);
+    const wd = (firstWD + dayNum - 1) % 7;
+    const isToday = dateStr === todayStr;
+    const isSelected = dateStr === selectedDate;
+    const dayEvents = eventsOn(dateStr);
+    const shown = dayEvents.slice(0,3);
+    const extra = dayEvents.length - shown.length;
+    const dotsHtml = dayEvents.length
+      ? `<div class="dots">${shown.map(e=>`<i style="background:${e.color}"></i>`).join('')}${extra>0?`<i class="more">+${extra}</i>`:''}</div>`
+      : `<div class="dots"></div>`;
+    const cls = ['day','pick', wd===0?'sun':'', wd===6?'sat':'', isToday?'today':'', isSelected?'selected':''].filter(Boolean).join(' ');
+    cells += `<div class="${cls}" data-date="${dateStr}"><span class="n">${dayNum}</span>${dotsHtml}</div>`;
+  }
+
+  const eventsSectionHtml = selectedDate ? (()=>{
+    const dt = parseYMD(selectedDate);
+    const label = `${dt.getMonth()+1}월 ${dt.getDate()}일(${WD[dt.getDay()]})`;
+    const list = eventsOn(selectedDate).map(withDist);
+    return `
+      <div class="section-title-row">
+        <div class="section-title"><span class="label">${label}</span></div>
+        <button class="clear" id="clearSel">오늘 기준으로 보기</button>
+      </div>
+      <div class="events">${list.length ? list.map(eventCard).join('') : '<div class="empty">이 날짜에는 일정이 없습니다</div>'}</div>
+    `;
+  })() : (()=>{
+    const near = nearestEvents();
+    return `
+      <div class="section-title-row">
+        <div class="section-title">다가오는 일정</div>
+      </div>
+      <div class="events">${near.length ? near.map(eventCard).join('') : '<div class="empty">등록된 일정이 없습니다</div>'}</div>
+    `;
+  })();
+
+  app.innerHTML = `
+    <div class="bar">
+      <a class="home" href="./index.html" aria-label="홈으로"><img src="./logo-mark.png" alt=""></a>
+      <h1>일정</h1>
+    </div>
+    <div class="cal">
+      <div class="cal-head">
+        <button id="prevM" aria-label="이전 달">‹</button>
+        <div class="mo">${viewY}년 ${viewM+1}월</div>
+        <button id="nextM" aria-label="다음 달">›</button>
+      </div>
+      <div class="wk">${WD.map(w=>`<span>${w}</span>`).join('')}</div>
+      <div class="days">${cells}</div>
+    </div>
+    ${eventsSectionHtml}
+  `;
+
+  document.getElementById('prevM').onclick = ()=>{ viewM--; if(viewM<0){viewM=11;viewY--;} render(); };
+  document.getElementById('nextM').onclick = ()=>{ viewM++; if(viewM>11){viewM=0;viewY++;} render(); };
+  const clearBtn = document.getElementById('clearSel');
+  if(clearBtn) clearBtn.onclick = ()=>{ selectedDate = null; render(); };
+  app.querySelectorAll('.day.pick').forEach(d=>{
+    d.onclick = ()=>{
+      const ds = d.dataset.date;
+      selectedDate = (selectedDate === ds) ? null : ds;
+      render();
+    };
+  });
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+render();
+
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>

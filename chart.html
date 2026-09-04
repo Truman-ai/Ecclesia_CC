@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fdf7ea">
+<title>차트 · 에클레시아 춘천</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#fdf7ea; --surface:#ffffff; --ink:#2c2013; --muted:#8a7f6c; --line:#ece2cc;
+    --accent:#80893f; --accent-ink:#4c5225;
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  .app{max-width:460px;margin:0 auto;min-height:100%;padding-bottom:calc(var(--safe-b) + 24px)}
+
+  .bar{display:flex;align-items:center;gap:10px;padding:calc(var(--safe-t) + 14px) 18px 12px}
+  .bar a.home{width:30px;height:30px;flex:none;display:block}
+  .bar a.home img{width:100%;height:100%;border-radius:8px;display:block}
+  .bar h1{flex:1;font-size:18px;font-weight:800;letter-spacing:-.01em}
+
+  .list{padding:8px 18px;display:flex;flex-direction:column;gap:10px}
+  .item{
+    display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;
+  }
+  .item:active{background:var(--line)}
+  .item .badge{
+    width:40px;height:40px;border-radius:12px;flex:none;display:grid;place-items:center;
+    font-size:18px;background:color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  .item .name{flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:-.01em;
+    overflow-wrap:break-word}
+  .item.missing .name{color:var(--muted)}
+  .item .flag{flex:none;font-size:11px;font-weight:700;color:var(--muted)}
+  .item .chev{flex:none;color:var(--muted);font-size:18px}
+  .empty{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+
+  /* ---------- 뷰어 ---------- */
+  .viewer{position:fixed;inset:0;z-index:100;background:#0c0b09;display:flex;flex-direction:column}
+  .viewer .vbar{
+    display:flex;align-items:center;gap:10px;color:#f2efe8;
+    padding:calc(var(--safe-t) + 10px) 14px 10px;
+  }
+  .viewer .vbar button{width:34px;height:34px;font-size:18px;color:inherit}
+  .viewer .vbar .title{flex:1;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stage{flex:1;position:relative;overflow:hidden;touch-action:none;display:flex;align-items:center;justify-content:center}
+  .stage img{max-width:92%;max-height:92%;object-fit:contain;user-select:none;-webkit-user-drag:none;
+    will-change:transform;transform-origin:center center;touch-action:none}
+  .stage .miss{color:#c9c2b2;font-size:13px;text-align:center;padding:0 30px;line-height:1.7}
+  .vhint{text-align:center;color:#c9c2b2;font-size:11px;padding:0 16px calc(var(--safe-b) + 12px);opacity:.7}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+/* =========================================================================
+   차트 이미지 목록 — 파일을 "차트이미지" 폴더에 넣고, 아래 목록에 파일명을 추가하면
+   그 이름으로 버튼이 생깁니다. (라벨은 확장자를 뺀 파일명을 그대로 씀)
+   ========================================================================= */
+const CHART_FILES = [
+  "교회의 예언적 전개(요한계시록 2-3장).png",
+  "마지막 때에 자기 백성들을 다스리시는 하나님.png",
+  "마지막 떄에 민족들을 다루시는 하나님.png",
+  "아버지께 드리는 예배.png",
+  "이 땅의 여러 시대들로 비춰보는 하나님의 왕국.png"
+];
+const DIR = "./차트이미지/";
+
+const app = document.getElementById('app');
+const presence = {}; // file -> true/false (존재 확인 캐시)
+
+function labelOf(file){ return file.replace(/\.[^.]+$/, ''); }
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderList(){
+  app.innerHTML = `
+    <div class="bar">
+      <a class="home" href="./index.html" aria-label="홈으로"><img src="./logo-mark.png" alt=""></a>
+      <h1>차트</h1>
+    </div>
+    ${CHART_FILES.length ? `<div class="list">${CHART_FILES.map((f,i)=>`
+      <button class="item" data-i="${i}">
+        <div class="badge">🗂️</div>
+        <div class="name">${escapeHtml(labelOf(f))}</div>
+        <div class="chev">›</div>
+      </button>`).join('')}</div>`
+      : `<div class="empty">등록된 차트가 없습니다.<br>chart.html의 CHART_FILES 배열에 파일명을 추가해주세요.</div>`}
+  `;
+  app.querySelectorAll('.item').forEach(b=>{
+    b.onclick = ()=> openViewer(CHART_FILES[+b.dataset.i]);
+  });
+  // 존재 여부 조용히 확인해서 흐리게 표시(선택적, 클릭은 항상 가능)
+  CHART_FILES.forEach((f,i)=>{
+    if(presence[f] !== undefined) return;
+    const img = new Image();
+    img.onload = ()=>{ presence[f] = true; };
+    img.onerror = ()=>{ presence[f] = false; markMissing(i); };
+    img.src = DIR + encodeURIComponent(f);
+  });
+}
+function markMissing(i){
+  const el = app.querySelector(`.item[data-i="${i}"]`);
+  if(el){ el.classList.add('missing'); el.querySelector('.chev').outerHTML = `<div class="flag">파일 없음</div>`; }
+}
+
+/* ---------- 뷰어: 핀치줌 · 팬 · 더블탭 확대 ---------- */
+function openViewer(file){
+  app.insertAdjacentHTML('beforeend', `
+    <div class="viewer" id="viewer">
+      <div class="vbar">
+        <button id="vClose" aria-label="닫기">✕</button>
+        <div class="title">${escapeHtml(labelOf(file))}</div>
+        <div style="width:34px"></div>
+      </div>
+      <div class="stage" id="stage">
+        <img id="vimg" src="${DIR}${encodeURIComponent(file)}" alt="" draggable="false">
+      </div>
+      <div class="vhint">손가락 두 개로 확대 · 더블탭으로 확대/축소</div>
+    </div>
+  `);
+  const viewer = document.getElementById('viewer');
+  const stage = document.getElementById('stage');
+  const img = document.getElementById('vimg');
+  document.body.style.overflow = 'hidden';
+
+  img.onerror = ()=>{
+    stage.innerHTML = `<div class="miss">이미지를 불러올 수 없습니다.<br>'차트이미지' 폴더에<br>"${escapeHtml(file)}" 파일이 있는지 확인해주세요.</div>`;
+  };
+
+  let scale = 1, tx = 0, ty = 0, baseW = 0, baseH = 0;
+  const MIN = 1, MAX = 5;
+
+  function apply(){ img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; }
+  function clamp(){
+    const overX = Math.max(0, (baseW*scale - stage.clientWidth)/2);
+    const overY = Math.max(0, (baseH*scale - stage.clientHeight)/2);
+    tx = Math.min(overX, Math.max(-overX, tx));
+    ty = Math.min(overY, Math.max(-overY, ty));
+  }
+  function reset(){ scale=1; tx=0; ty=0; apply(); }
+  img.addEventListener('load', ()=>{
+    const r = img.getBoundingClientRect();
+    baseW = r.width; baseH = r.height;
+    reset();
+  });
+
+  const pts = new Map();
+  let pinchStartDist = 0, pinchStartScale = 1, pinchMid = {x:0,y:0};
+  let panStart = null; // {x,y,tx,ty}
+  let lastTapT = 0, lastTapPt = {x:0,y:0};
+
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+  function mid(a,b){ return {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; }
+
+  function zoomAt(point, newScale){
+    newScale = Math.min(MAX, Math.max(MIN, newScale));
+    const rect = stage.getBoundingClientRect();
+    const cx = point.x - rect.left - rect.width/2;
+    const cy = point.y - rect.top - rect.height/2;
+    // 확대 중심(point)이 화면상 같은 자리에 남도록 tx,ty 보정
+    const k = newScale/scale;
+    tx = cx - (cx - tx)*k;
+    ty = cy - (cy - ty)*k;
+    scale = newScale;
+    clamp(); apply();
+  }
+
+  stage.addEventListener('pointerdown', e=>{
+    stage.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pts.size === 1){
+      panStart = {x:e.clientX, y:e.clientY, tx, ty};
+    } else if(pts.size === 2){
+      const [a,b] = [...pts.values()];
+      pinchStartDist = dist(a,b);
+      pinchStartScale = scale;
+      pinchMid = mid(a,b);
+    }
+  });
+  stage.addEventListener('pointermove', e=>{
+    if(!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pts.size === 1 && panStart && scale > 1){
+      tx = panStart.tx + (e.clientX - panStart.x);
+      ty = panStart.ty + (e.clientY - panStart.y);
+      clamp(); apply();
+    } else if(pts.size === 2){
+      const [a,b] = [...pts.values()];
+      const d = dist(a,b);
+      const newScale = pinchStartScale * (d/pinchStartDist);
+      zoomAt(pinchMid, newScale);
+    }
+  });
+  function endPt(e){
+    pts.delete(e.pointerId);
+    if(pts.size === 1){
+      const [p] = [...pts.values()];
+      panStart = {x:p.x, y:p.y, tx, ty};
+    } else if(pts.size === 0){
+      if(scale < 1.02) reset(); else clamp(), apply();
+      // 더블탭 감지
+      const now = Date.now();
+      const p = {x:e.clientX, y:e.clientY};
+      if(now - lastTapT < 300 && dist(p,lastTapPt) < 30){
+        zoomAt(p, scale > 1.5 ? 1 : 2.4);
+        lastTapT = 0;
+      } else {
+        lastTapT = now; lastTapPt = p;
+      }
+    }
+  }
+  stage.addEventListener('pointerup', endPt);
+  stage.addEventListener('pointercancel', endPt);
+
+  stage.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const delta = -e.deltaY * 0.0025;
+    zoomAt({x:e.clientX, y:e.clientY}, scale * (1+delta));
+  }, {passive:false});
+
+  function close(){
+    document.body.style.overflow = '';
+    viewer.remove();
+  }
+  document.getElementById('vClose').onclick = close;
+  const escHandler = e => { if(e.key === 'Escape') close(); };
+  window.addEventListener('keydown', escHandler, {once:true});
+}
+
+renderList();
+
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
