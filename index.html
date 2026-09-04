@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#63bc70">
+<meta name="theme-color" content="#fdf7ea">
 <title>에클레시아 춘천 찬송가</title>
 
 <link rel="manifest" href="./manifest.webmanifest">
@@ -43,6 +43,7 @@
     border-bottom:1px solid var(--line);
     display:flex;align-items:center;gap:10px;
   }
+  .bar .brandmark{width:30px;height:30px;flex:none;border-radius:8px}
   .bar h1{font-size:18px;font-weight:700;letter-spacing:-.01em;flex:1;min-width:0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .bar .iconbtn{
@@ -526,6 +527,7 @@ function renderList(){
   });
   app.innerHTML = `
     <div class="bar">
+      <img class="brandmark" src="./logo-mark.png" alt="">
       <h1>에클레시아 춘천 찬송가</h1>
       <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
     </div>
