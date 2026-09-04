@@ -520,11 +520,8 @@ function render(){
 }
 
 function renderList(){
-  const q = searchTerm.trim().toLowerCase();
-  const filtered = HYMNS.filter(h=>{
-    if(!q) return true;
-    return String(h.n) === q || String(h.n).includes(q) || h.title.toLowerCase().includes(q);
-  });
+  // 검색창(input)은 여기서 한 번만 만들고, 타이핑할 때는 목록만 다시 그림.
+  // (매 입력마다 input을 통째로 새로 만들면 한글 조합이 깨져 'ㄱㅏㄴㅏ'처럼 입력됨)
   app.innerHTML = `
     <div class="bar">
       <img class="brandmark" src="./logo-mark.png" alt="">
@@ -535,21 +532,32 @@ function renderList(){
       <input id="q" type="search" inputmode="search" placeholder="번호 또는 제목으로 찾기"
              autocomplete="off" value="${escapeAttr(searchTerm)}">
     </div>
-    ${filtered.length ? `<ul class="list">${filtered.map(h=>`
+    <div id="listWrap"></div>
+  `;
+  const qi = document.getElementById('q');
+  qi.addEventListener('input', e=>{ searchTerm = e.target.value; renderListItems(); });
+  if(searchTerm){ qi.focus(); const v=qi.value; qi.value=''; qi.value=v; }
+  document.getElementById('themeBtn').onclick = ()=>{
+    theme = theme==='dark'?'light':'dark'; store.set('hj_theme',theme); applyTheme();
+    document.getElementById('themeBtn').textContent = theme==='dark'?'☀️':'🌙';
+  };
+  renderListItems();
+}
+
+function renderListItems(){
+  const q = searchTerm.trim().toLowerCase();
+  const filtered = HYMNS.filter(h=>{
+    if(!q) return true;
+    return String(h.n) === q || String(h.n).includes(q) || h.title.toLowerCase().includes(q);
+  });
+  const wrap = document.getElementById('listWrap');
+  wrap.innerHTML = filtered.length ? `<ul class="list">${filtered.map(h=>`
       <li><button class="item" data-n="${h.n}">
         <span class="num">${h.n}</span>
         <span class="ttl">${escapeHtml(h.title)}${h.ref?`<span class="ref">${escapeHtml(h.ref)}</span>`:''}</span>
       </button></li>`).join('')}</ul>`
-      : `<div class="empty">검색 결과가 없습니다</div>`}
-  `;
-  const qi = document.getElementById('q');
-  qi.addEventListener('input', e=>{ searchTerm = e.target.value; renderList(); });
-  // keep focus + caret at end after re-render
-  if(q || document.activeElement === qi || searchTerm){ qi.focus(); const v=qi.value; qi.value=''; qi.value=v; }
-  document.getElementById('themeBtn').onclick = ()=>{
-    theme = theme==='dark'?'light':'dark'; store.set('hj_theme',theme); applyTheme(); renderList();
-  };
-  app.querySelectorAll('.item').forEach(b=>{
+      : `<div class="empty">검색 결과가 없습니다</div>`;
+  wrap.querySelectorAll('.item').forEach(b=>{
     b.onclick = ()=> go('#/h/'+b.dataset.n);
   });
 }
