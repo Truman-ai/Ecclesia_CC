@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fdf7ea">
-<title>에클레시아 춘천 찬송가</title>
+<title>찬송가 · 에클레시아 춘천</title>
 
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
@@ -16,7 +16,7 @@
 <style>
   :root{
     --bg:#faf9f7; --surface:#ffffff; --ink:#1c1b19; --muted:#7a756c;
-    --line:#e7e3db; --accent:#1e3a8a; --refrain:#c0392b;
+    --line:#e7e3db; --accent:#1e3a8a; --refrain:#c0392b; --danger:#c0392b;
     --scale:1;
     --safe-t:env(safe-area-inset-top,0px);
     --safe-b:env(safe-area-inset-bottom,0px);
@@ -154,11 +154,56 @@
     body{padding:0}
     .app{border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
   }
+
+  /* ---------- 관리자 ---------- */
+  .bar .secretPair{flex:none;display:flex;gap:50px}
+  .bar .secretZone{flex:none;width:36px;height:36px}
+  .bar .adminTag{flex:none;font-size:12px;font-weight:700;color:#fff;background:var(--accent);
+    border-radius:999px;padding:6px 11px}
+  html[data-theme="dark"] .bar .adminTag{color:#0f1115}
+  .seedBanner{margin:10px 14px 0;padding:12px 14px;border:1px dashed var(--accent);border-radius:12px;
+    font-size:13px;color:var(--ink);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .seedBanner button{flex:none;font-size:12px;font-weight:800;color:#fff;background:var(--accent);
+    border-radius:999px;padding:7px 12px}
+  .seedBanner.reseed{border-style:solid;border-color:var(--line);color:var(--muted);font-size:12px;padding:9px 12px}
+  .seedBanner.reseed button{background:var(--muted)}
+  .addHymnBtn{margin:10px 14px 0;width:calc(100% - 28px);padding:12px;border-radius:12px;
+    border:1px solid var(--accent);color:var(--accent);font-weight:800;font-size:14px}
+  .admin-row{display:flex;gap:10px;margin:28px 0 6px}
+  .admin-row button{flex:1;padding:11px;border-radius:12px;border:1px solid var(--line);
+    background:var(--surface);font-weight:700;font-size:14px}
+  .admin-row button.del{color:var(--danger);border-color:var(--danger)}
+
+  /* ---------- 모달 ---------- */
+  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+    display:flex;align-items:flex-end;justify-content:center}
+  @media (min-width:560px){ .backdrop{align-items:center} }
+  .sheet{width:100%;max-width:520px;background:var(--surface);border-radius:22px 22px 0 0;
+    padding:22px 22px calc(var(--safe-b) + 22px);max-height:92vh;overflow:auto}
+  @media (min-width:560px){ .sheet{border-radius:22px} }
+  .sheet h2{font-size:17px;font-weight:800;margin-bottom:16px;letter-spacing:-.01em}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .field input,.field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:12px;
+    background:var(--bg);color:var(--ink);font-size:15px;font-family:inherit}
+  .field textarea{min-height:44vh;line-height:1.6;resize:vertical;white-space:pre}
+  .field input:focus,.field textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .field .hint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+  .err{font-size:12.5px;color:var(--danger);margin:-6px 0 12px;white-space:pre-wrap}
+  .btns{display:flex;gap:10px;margin-top:6px}
+  .btns button{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:700}
+  .btn-cancel{background:var(--bg);border:1px solid var(--line);color:var(--ink)}
+  .btn-save{background:var(--ink);color:var(--bg)}
+  .btn-save:disabled{opacity:.5}
 </style>
 </head>
 <body>
 <div class="app" id="app"></div>
+<div id="modalRoot"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script>
 /* =========================================================================
    에클레시아 춘천 찬송가  —  단일 파일 앱
@@ -166,25 +211,26 @@
    구조: { n:번호, title:제목, ref:성구|null,
            blocks:[ {type:'verse'|'refrain', label, text} ] }
    'text' 안의 줄바꿈(\n)이 화면에서 그대로 줄바꿈됩니다.
+   아래 HYMNS_SEED는 예비(오프라인)용. 실제 데이터는 Firestore 'hymns' 컬렉션에서 읽음.
    ========================================================================= */
-const HYMNS = [
+const HYMNS_SEED = [
   {
     n:1, title:"주 하나님 지으신 모든 세계", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"주 하나님 지으신 모든 세계\n내 마음 속에 그리어 볼 때\n하늘의 별 울려 퍼지는 뇌성\n주님의 권능 우주에 찼네"},
+      {type:'refrain', label:"후렴", text:"주님의 높고 위대하심을 내 영혼이 찬양하네\n주님의 높고 위대하심을 내 영혼이 찬양하네"},
       {type:'verse', label:"2절", text:"숲속이나 험한 산골짝에서\n지저귀는 저 새소리들과\n고요하게 흐르는 시냇물은\n주님의 솜씨 노래하도다"},
       {type:'verse', label:"3절", text:"주 하나님 독생자 아낌없이\n우리를 위해 보내주셨네\n십자가에 피 흘려 죽으신 주\n내 모든 죄를 대속하셨네"},
-      {type:'verse', label:"4절", text:"내 주 예수 세상에 다시 올 때\n저 천국으로 날 인도하리\n나 겸손히 엎드려 경배하며\n영원히 주를 찬양하리라"},
-      {type:'refrain', label:"후렴", text:"주님의 높고 위대하심을 내 영혼이 찬양하네\n주님의 높고 위대하심을 내 영혼이 찬양하네"}
+      {type:'verse', label:"4절", text:"내 주 예수 세상에 다시 올 때\n저 천국으로 날 인도하리\n나 겸손히 엎드려 경배하며\n영원히 주를 찬양하리라"}
     ]
   },
   {
     n:2, title:"주의 진리 위해", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"왕의 군사들아 그의 깃발을 하늘 높이 들고서\n그의 나라 위해 용맹스럽게 찬송하며 나가세"},
+      {type:'refrain', label:"후렴", text:"앞으로 행진해 그리스도의 군사로\n주님과 함께 싸우면 함께 통치하리라"},
       {type:'verse', label:"2절", text:"그리스도 은혜 안에서 강한 하나님의 군대여\n함께 하늘의 부름 받았으니 찬송하며 나가세"},
-      {type:'verse', label:"3절", text:"보좌 위에 계신 영광의 주님 어서 오시옵소서\n주의 나라 이 땅 위에 임하리 승리하신 왕의 왕"},
-      {type:'refrain', label:"후렴", text:"앞으로 행진해 그리스도의 군사로\n주님과 함께 싸우면 함께 통치하리라"}
+      {type:'verse', label:"3절", text:"보좌 위에 계신 영광의 주님 어서 오시옵소서\n주의 나라 이 땅 위에 임하리 승리하신 왕의 왕"}
     ]
   },
   {
@@ -278,9 +324,9 @@ const HYMNS = [
     n:14, title:"주님을 사랑하네", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"주님을 사랑하네 나의 마음 다하여\n나의 힘을 다하여 오직 주만 사랑해"},
+      {type:'refrain', label:"후렴", text:"우리 위해 자신을 주신 사랑이 우릴 강권하네\n세상을 사랑하지 않네 주님만을 사랑하네"},
       {type:'verse', label:"2절", text:"첫 사랑으로 사랑 주를 가장 사랑해\n나의 뜻을 다하여 주를 사랑합니다"},
-      {type:'verse', label:"3절", text:"나를 사랑하느냐 주님 물으신다면\n베드로의 답처럼 주님 아시옵니다"},
-      {type:'refrain', label:"후렴", text:"우리 위해 자신을 주신 사랑이 우릴 강권하네\n세상을 사랑하지 않네 주님만을 사랑하네"}
+      {type:'verse', label:"3절", text:"나를 사랑하느냐 주님 물으신다면\n베드로의 답처럼 주님 아시옵니다"}
     ]
   },
   {
@@ -320,9 +366,9 @@ const HYMNS = [
     n:19, title:"내 장래 일이 가려져", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"내 장래 일이 가려져 내 눈엔 뵈지 않으나\n나 주님 손을 붙잡고 한 걸음씩 가네"},
+      {type:'refrain', label:"후렴", text:"다만 한 걸음씩 다만 한 걸음씩\n영광 나라 바라보며 다만 한 걸음씩"},
       {type:'verse', label:"2절", text:"내 가는 길을 몰라도 내 앞의 빛을 따르네\n주 예수 의지 함으로 한 걸음씩 가네"},
-      {type:'verse', label:"3절", text:"내 앞에 두려움 없고 근심할 필요 없겠네\n앞서간 성도들 따라 한 걸음씩 가네"},
-      {type:'refrain', label:"후렴", text:"다만 한 걸음씩 다만 한 걸음씩\n영광 나라 바라보며 다만 한 걸음씩"}
+      {type:'verse', label:"3절", text:"내 앞에 두려움 없고 근심할 필요 없겠네\n앞서간 성도들 따라 한 걸음씩 가네"}
     ]
   },
   {
@@ -335,9 +381,9 @@ const HYMNS = [
     n:21, title:"오 놀라운 구세주 예수 내 주", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"오 놀라운 구세주 예수 내 주 참 능력의 주시로다\n큰 바위 밑 안전한 그 곳으로 내 영혼을 숨기시네"},
+      {type:'refrain', label:"후렴", text:"메마른 땅을 종일 걸어가도 나 피곤치 아니하며\n저 위험한 곳 내가 이를 때면 큰 바위 틈에 숨기사\n그 손으로 덮으시네"},
       {type:'verse', label:"2절", text:"오 놀라운 구세주 예수 내 주 내 모든 짐 벗기시네\n날 붙들어 요동치 않게 하며 또 나에게 힘 주시네"},
-      {type:'verse', label:"3절", text:"측량 못할 은혜로 채우시며 늘 성령의 감화 주사\n주님 다시 오실 때 영광 중에 나 일어나 주 맞으리"},
-      {type:'refrain', label:"후렴", text:"메마른 땅을 종일 걸어가도 나 피곤치 아니하며\n저 위험한 곳 내가 이를 때면 큰 바위 틈에 숨기사\n그 손으로 덮으시네"}
+      {type:'verse', label:"3절", text:"측량 못할 은혜로 채우시며 늘 성령의 감화 주사\n주님 다시 오실 때 영광 중에 나 일어나 주 맞으리"}
     ]
   },
   {
@@ -367,10 +413,10 @@ const HYMNS = [
     n:25, title:"예수 십자가의 능력을 아는가", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"예수 십자가에 흘린 피로써 그대는 씻기어 있는가\n더러운 죄 희게 하는 능력을 그대는 참 의지하는가"},
+      {type:'refrain', label:"후렴", text:"예수의 보혈로 그대는 씻기어 있는가\n주와 함께 죽고 다시 살았나 새 생명 안에서 걷는가"},
       {type:'verse', label:"2절", text:"주 예수와 함께 십자가에서 못박힌 사실을 아는가\n주와 함께 죽고 다시 살았네 부활의 새 생명 얻었네"},
       {type:'verse', label:"3절", text:"영광의 주 다시 올 때 그대는 영접할 예복이 있는가\n깨끗하고 거룩하게 주 앞에 나아갈 준비가 되었나"},
-      {type:'verse', label:"4절", text:"모든 죄에 더러워진 예복을 주 앞에 지금 다 벗어서\n샘물 같이 솟아나는 보혈로 눈보다 더 희게 씻으라"},
-      {type:'refrain', label:"후렴", text:"예수의 보혈로 그대는 씻기어 있는가\n주와 함께 죽고 다시 살았나 새 생명 안에서 걷는가"}
+      {type:'verse', label:"4절", text:"모든 죄에 더러워진 예복을 주 앞에 지금 다 벗어서\n샘물 같이 솟아나는 보혈로 눈보다 더 희게 씻으라"}
     ]
   },
   {
@@ -385,9 +431,9 @@ const HYMNS = [
     n:27, title:"주님께 영광", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"주님께 영광 다시 사신 주 사망 권세 모두 이기시었네\n흰 옷 입은 천사 돌을 옮겼고 누우셨던 곳은 비어 있었네"},
+      {type:'refrain', label:"후렴", text:"주님께 영광 다시 사신 주\n사망 권세 모두 이기시었네"},
       {type:'verse', label:"2절", text:"부활의 주님 나타나시사 두려움과 의심 물리치셨네\n주의 교회 기뻐 찬송하여라 다시 사신 주님 죽음 이겼네"},
-      {type:'verse', label:"3절", text:"생명의 임금 영광의 주님 부활 승천하사 승리하셨네\n주의 원수 머리 밟으셨도다 만유 위에 높이 올리우셨네"},
-      {type:'refrain', label:"후렴", text:"주님께 영광 다시 사신 주\n사망 권세 모두 이기시었네"}
+      {type:'verse', label:"3절", text:"생명의 임금 영광의 주님 부활 승천하사 승리하셨네\n주의 원수 머리 밟으셨도다 만유 위에 높이 올리우셨네"}
     ]
   },
   {
@@ -400,24 +446,24 @@ const HYMNS = [
     n:30, title:"빛 안의 성도들", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"주의 빛 안에 있는 자 그 빛 안에서 걸으라\n구속함을 받은 자 거룩한 백성"},
-      {type:'verse', label:"2절", text:"유다 지파의 사자라 다윗의 뿌리 이겼다\n광명한 새벽 별이라 만왕의 왕이라"},
-      {type:'refrain', label:"후렴", text:"흰 예복과 금 면류관 또 거문고를 들고서\n주님의 거룩한 이름 높이 찬송하리라\n주님을 따르리 어린 양을 따르리\n어디로 가든지 그만 따라가리라"}
+      {type:'refrain', label:"후렴", text:"흰 예복과 금 면류관 또 거문고를 들고서\n주님의 거룩한 이름 높이 찬송하리라\n주님을 따르리 어린 양을 따르리\n어디로 가든지 그만 따라가리라"},
+      {type:'verse', label:"2절", text:"유다 지파의 사자라 다윗의 뿌리 이겼다\n광명한 새벽 별이라 만왕의 왕이라"}
     ]
   },
   {
     n:31, title:"크신 주께 찬송 돌리세", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"크신 주께 영광 돌리세 하나님의 성에서\n그의 거룩한 산에서\n터가 높고 아름다와 온 세상의 기쁨\n저 북방에 있는 시온 산 큰 왕의 성일세"},
-      {type:'verse', label:"2절", text:"거룩한 산 시온 산이여 나의 왕이 계신 곳\n여호와가 택하신 곳\n진동하지 않는 나라 우리가 이른 곳\n시온 산은 기뻐하여라 큰 왕의 성일세"},
-      {type:'refrain', label:"후렴", text:"Sing 할렐루야 Sing 할렐루야 Sing 할렐루야 큰 왕의 성일세"}
+      {type:'refrain', label:"후렴", text:"Sing 할렐루야 Sing 할렐루야 Sing 할렐루야 큰 왕의 성일세"},
+      {type:'verse', label:"2절", text:"거룩한 산 시온 산이여 나의 왕이 계신 곳\n여호와가 택하신 곳\n진동하지 않는 나라 우리가 이른 곳\n시온 산은 기뻐하여라 큰 왕의 성일세"}
     ]
   },
   {
     n:32, title:"우리 보좌 앞에 모였네", ref:"계 7:9-15",
     blocks:[
       {type:'verse', label:"1절", text:"우리 보좌 앞에 모였네 함께 주를 찬양하며\n전에도 계셨고 이제도 계신 주 장차 오실 영원하신 왕이여\n십자가에서 쏟으신 그 사랑 강 같이 온 땅에 흘러\n각 나라와 족속 백성 방언에서 구원받고 주 경배 드리네"},
-      {type:'verse', label:"2절", text:"능히 셀 수 없는 큰 무리 흰 옷을 입고 찬양해\n손에 종려 가지 들고 서 외치네 영광 존귀 권능이 주께\n어린 양의 피에 그 옷을 씻어 희게 한 거룩한 백성\n하나님의 성전 그 보좌 앞에서 영원토록 경배 드리네"},
-      {type:'refrain', label:"후렴", text:"구원하심이 보좌에 앉으신 우리 하나님과 어린 양께 있도다\n구원하심이 보좌에 앉으신 우리 하나님과 어린 양께 있도다"}
+      {type:'refrain', label:"후렴", text:"구원하심이 보좌에 앉으신 우리 하나님과 어린 양께 있도다\n구원하심이 보좌에 앉으신 우리 하나님과 어린 양께 있도다"},
+      {type:'verse', label:"2절", text:"능히 셀 수 없는 큰 무리 흰 옷을 입고 찬양해\n손에 종려 가지 들고 서 외치네 영광 존귀 권능이 주께\n어린 양의 피에 그 옷을 씻어 희게 한 거룩한 백성\n하나님의 성전 그 보좌 앞에서 영원토록 경배 드리네"}
     ]
   },
   {
@@ -439,8 +485,8 @@ const HYMNS = [
     n:40, title:"우리는 주님의 군사들", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"우리는 주님의 군사들\n영광의 길을 가네\n주님께 참 경배 드리며\n시온 대로를 가네"},
-      {type:'verse', label:"2절", text:"주 인도 따라서 어디나\n영광의 길을 가네\n우리의 충성을 드리며\n시온 대로를 가네"},
-      {type:'refrain', label:"후렴", text:"행진하라 시온의 대로\n주의 명령 순종하면서\n대장 되신 주 인도 따라서\n영광의 길을 가네"}
+      {type:'refrain', label:"후렴", text:"행진하라 시온의 대로\n주의 명령 순종하면서\n대장 되신 주 인도 따라서\n영광의 길을 가네"},
+      {type:'verse', label:"2절", text:"주 인도 따라서 어디나\n영광의 길을 가네\n우리의 충성을 드리며\n시온 대로를 가네"}
     ]
   },
   {
@@ -453,8 +499,8 @@ const HYMNS = [
     n:46, title:"크신 일을 행하신", ref:null,
     blocks:[
       {type:'verse', label:"1절", text:"크신 일을 행하신 주를 찬양\n그의 피로 죄에서 해방하사\n아버지 하나님을 위하여\n왕들과 제사장들 삼으셨네"},
-      {type:'verse', label:"2절", text:"주의 날 곧 오리라 준비하라\n기다리고 사모해 앞당기라\n새 하늘과 새 땅을 바라보라\n경건과 거룩으로 이기어라"},
-      {type:'refrain', label:"후렴", text:"우리 주 높이 세우세 다시 오시리라\n전능의 왕이라 속히 오시리라\n은혜와 평강의 왕 찬양하라\n크신 일을 행하신 주를 찬양"}
+      {type:'refrain', label:"후렴", text:"우리 주 높이 세우세 다시 오시리라\n전능의 왕이라 속히 오시리라\n은혜와 평강의 왕 찬양하라\n크신 일을 행하신 주를 찬양"},
+      {type:'verse', label:"2절", text:"주의 날 곧 오리라 준비하라\n기다리고 사모해 앞당기라\n새 하늘과 새 땅을 바라보라\n경건과 거룩으로 이기어라"}
     ]
   },
   {
@@ -479,6 +525,205 @@ const HYMNS = [
     ]
   }
 ];
+
+/* ---------- Firebase (일정 섹션과 같은 프로젝트·계정 공유) ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyAlhXqaMgI3phBuH7LaFI339TrPLQaqCWA",
+  authDomain: "ecclesiacc-b33d8.firebaseapp.com",
+  projectId: "ecclesiacc-b33d8",
+  storageBucket: "ecclesiacc-b33d8.firebasestorage.app",
+  messagingSenderId: "958593730476",
+  appId: "1:958593730476:web:16cbcb1f9159027db3dc09"
+};
+const ADMIN_EMAIL = "admin@ecclesiacc-b33d8.firebaseapp.com";
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence().catch(()=>{});
+
+let HYMNS = HYMNS_SEED.slice();  // Firestore 데이터 도착 전엔 예비 데이터 사용
+let currentUser = null;
+let hymnsEmpty = false;          // Firestore hymns 컬렉션이 비었는지 (시드 안내용)
+
+function subscribeHymns(){
+  db.collection('hymns').orderBy('n').onSnapshot(snap=>{
+    hymnsEmpty = snap.empty;
+    if(!snap.empty) HYMNS = snap.docs.map(d => d.data());
+    render();
+  }, err=>{
+    console.error(err);
+    render();
+    setTimeout(subscribeHymns, 4000);
+  });
+}
+subscribeHymns();
+
+auth.onAuthStateChanged(u=>{ currentUser = u; closeModal(); render(); });
+
+async function doLogout(){ await auth.signOut(); }
+
+async function seedHymns(){
+  const batch = db.batch();
+  HYMNS_SEED.forEach(h=>{
+    batch.set(db.collection('hymns').doc(String(h.n)), {
+      n: h.n, title: h.title, ref: h.ref || null, blocks: h.blocks
+    });
+  });
+  await batch.commit();
+}
+
+/* ---------- 숨긴 관리자 진입: 상단바 오른쪽 두 영역 A→B→A→B (2.5초 안에) ---------- */
+const SECRET_SEQ = ['A','B','A','B'];
+let secretSeq = [], secretTimer = null;
+function secretTap(which){
+  clearTimeout(secretTimer);
+  secretTimer = setTimeout(()=>{ secretSeq = []; }, 2500);
+  secretSeq.push(which);
+  if(!secretSeq.every((v,i)=> v === SECRET_SEQ[i])){
+    secretSeq = (which === SECRET_SEQ[0]) ? [which] : [];
+    return;
+  }
+  if(secretSeq.length === SECRET_SEQ.length){
+    secretSeq = [];
+    clearTimeout(secretTimer);
+    openModal('login');
+  }
+}
+
+/* ---------- 찬송 <-> 텍스트 변환 ---------- */
+function hymnToText(h){
+  let out = `${h.n}장. ${h.title}${h.ref ? ` (${h.ref})` : ''}\n\n`;
+  h.blocks.forEach(b=>{
+    const lines = (b.text || '').split('\n');
+    if(b.type === 'refrain'){
+      out += `[후렴]\n`;
+      lines.forEach(l => out += ` ${l}\n`);
+    } else {
+      const mm = (b.label || '').match(/^(\d+)/);
+      out += `${mm ? mm[1] : '1'}. ${lines[0] || ''}\n`;
+      lines.slice(1).forEach(l => out += ` ${l}\n`);
+    }
+  });
+  return out.replace(/\s+$/,'') + '\n';
+}
+function textToHymn(text){
+  const lines = text.split('\n');
+  let header = null, bodyStart = 0;
+  for(let i=0;i<lines.length;i++){
+    const s = lines[i].trim();
+    if(!s || s.startsWith('#')) continue;
+    header = s; bodyStart = i+1; break;
+  }
+  if(!header) throw new Error('첫 줄에 제목이 없습니다.\n예: 27장. 주님께 영광');
+  const m = header.match(/^(\d+)\s*장\.\s*(.+?)\s*(?:\(([^()]+)\))?\s*$/);
+  if(!m) throw new Error('첫 줄 형식이 잘못됐습니다.\n예: 27장. 주님께 영광 (선택: 성구)');
+  const n = parseInt(m[1], 10);
+  const title = m[2].trim();
+  const ref = m[3] ? m[3].trim() : null;
+  const blocks = [];
+  let cur = null;
+  for(let i=bodyStart;i<lines.length;i++){
+    const raw = lines[i];
+    const s = raw.trim();
+    if(!s || s.startsWith('#')) continue;
+    const mv = s.match(/^(\d+)\.\s*(.*)$/);
+    if(s === '[후렴]'){
+      cur = { type:'refrain', label:'후렴', text:'' };
+      blocks.push(cur);
+    } else if(mv){
+      cur = { type:'verse', label:`${mv[1]}절`, text: mv[2].trim() };
+      blocks.push(cur);
+    } else if(cur){
+      cur.text = (cur.text ? cur.text + '\n' : '') + s;
+    } else {
+      cur = { type:'verse', label:'', text: s };
+      blocks.push(cur);
+    }
+  }
+  if(!blocks.length) throw new Error('가사 내용이 없습니다.');
+  if(blocks.length === 1 && blocks[0].type === 'verse') blocks[0].label = '';
+  return { n, title, ref, blocks };
+}
+
+/* ---------- 모달: 로그인 / 찬송 추가·수정 ---------- */
+function closeModal(){ const r = document.getElementById('modalRoot'); if(r) r.innerHTML = ''; }
+
+function openModal(mode, hymn){
+  const root = document.getElementById('modalRoot');
+  if(mode === 'login'){
+    root.innerHTML = `
+      <div class="backdrop" id="bd">
+        <div class="sheet">
+          <h2>관리자 로그인</h2>
+          <div class="field"><label>비밀번호</label><input id="fPw" type="password" autocomplete="current-password" autofocus></div>
+          <div class="err" id="fErr" style="display:none"></div>
+          <div class="btns">
+            <button class="btn-cancel" id="cancel">취소</button>
+            <button class="btn-save" id="save">로그인</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('cancel').onclick = closeModal;
+    document.getElementById('bd').onclick = e=>{ if(e.target.id === 'bd') closeModal(); };
+    const pw = document.getElementById('fPw');
+    pw.addEventListener('keydown', e=>{ if(e.key === 'Enter') document.getElementById('save').click(); });
+    document.getElementById('save').onclick = async ()=>{
+      const err = document.getElementById('fErr');
+      const btn = document.getElementById('save');
+      btn.disabled = true;
+      try{ await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pw.value); }
+      catch(e){ err.textContent = `로그인 실패 (${e.code})`; err.style.display = 'block'; btn.disabled = false; }
+    };
+    return;
+  }
+
+  const isEdit = mode === 'edit';
+  const initial = isEdit ? hymnToText(hymn) : '';
+  root.innerHTML = `
+    <div class="backdrop" id="bd">
+      <div class="sheet">
+        <h2>${isEdit ? `찬송 수정 (${hymn.n}장)` : '새 찬송'}</h2>
+        <div class="field">
+          <label>가사 (첫 줄: "번호장. 제목", 절은 "1.", 후렴은 [후렴])</label>
+          <textarea id="fText" spellcheck="false" placeholder="27장. 주님께 영광&#10;&#10;1. 주님께 영광 다시 사신 주&#10; 흰 옷 입은 천사 돌을 옮겼고&#10;2. 부활의 주님 나타나시사&#10;[후렴]&#10; 주님께 영광 다시 사신 주">${escapeHtml(initial)}</textarea>
+          <div class="hint">이어지는 줄은 맨 앞에 칸(스페이스) 한 칸. 성구는 첫 줄 끝에 (사 66:23)처럼.</div>
+        </div>
+        <div class="err" id="fErr" style="display:none"></div>
+        <div class="btns">
+          <button class="btn-cancel" id="cancel">취소</button>
+          <button class="btn-save" id="save">${isEdit ? '저장' : '추가'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancel').onclick = closeModal;
+  document.getElementById('bd').onclick = e=>{ if(e.target.id === 'bd') closeModal(); };
+  document.getElementById('save').onclick = async ()=>{
+    const err = document.getElementById('fErr');
+    const btn = document.getElementById('save');
+    let parsed;
+    try{ parsed = textToHymn(document.getElementById('fText').value); }
+    catch(e){ err.textContent = e.message; err.style.display = 'block'; return; }
+    const clash = HYMNS.find(x => x.n === parsed.n && (!isEdit || x.n !== hymn.n));
+    if(clash){ err.textContent = `${parsed.n}번은 이미 "${clash.title}"이(가) 쓰고 있습니다.`; err.style.display = 'block'; return; }
+    btn.disabled = true;
+    try{
+      await db.collection('hymns').doc(String(parsed.n)).set(parsed);
+      if(isEdit && parsed.n !== hymn.n){
+        await db.collection('hymns').doc(String(hymn.n)).delete();
+      }
+      closeModal();
+      if(isEdit) go('#/h/' + parsed.n); else go('#/');
+    }catch(e){
+      err.textContent = '저장 실패: ' + e.message; err.style.display = 'block'; btn.disabled = false;
+    }
+  };
+}
+
+async function deleteHymn(h){
+  if(!confirm(`${h.n}장 "${h.title}"을(를) 삭제할까요?`)) return;
+  try{ await db.collection('hymns').doc(String(h.n)).delete(); go('#/'); }
+  catch(e){ alert('삭제 실패: ' + e.message); }
+}
 
 /* ---------- 설정 (localStorage) ---------- */
 const store = {
@@ -523,16 +768,30 @@ function render(){
 function renderList(){
   // 검색창(input)은 여기서 한 번만 만들고, 타이핑할 때는 목록만 다시 그림.
   // (매 입력마다 input을 통째로 새로 만들면 한글 조합이 깨져 'ㄱㅏㄴㅏ'처럼 입력됨)
+  const adminCtl = currentUser
+    ? `<button class="adminTag" id="adminBtn">관리자 모드</button>`
+    : `<span class="secretPair">
+         <button class="secretZone" id="secretB" aria-hidden="true" tabindex="-1"></button>
+         <button class="secretZone" id="secretA" aria-hidden="true" tabindex="-1"></button>
+       </span>`;
+  const adminExtras = currentUser ? `
+    ${hymnsEmpty
+      ? `<div class="seedBanner">Firestore에 찬송이 없습니다. 지금 있는 ${HYMNS_SEED.length}곡을 옮기세요. <button id="seedBtn">가져오기</button></div>`
+      : `<div class="seedBanner reseed">앱 내장 원본 ${HYMNS_SEED.length}곡으로 덮어쓰기 <button id="seedBtn">실행</button></div>`}
+    <button class="addHymnBtn" id="addHymnBtn">+ 새 찬송</button>` : '';
+
   app.innerHTML = `
     <div class="bar">
       <a class="brandmark" href="./index.html" aria-label="홈으로"><img src="./logo-mark.png" alt=""></a>
-      <h1>에클레시아 춘천 찬송가</h1>
+      <h1>찬송가</h1>
+      ${adminCtl}
       <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
     </div>
     <div class="search">
       <input id="q" type="search" inputmode="search" placeholder="번호 또는 제목으로 찾기"
              autocomplete="off" value="${escapeAttr(searchTerm)}">
     </div>
+    ${adminExtras}
     <div id="listWrap"></div>
   `;
   const qi = document.getElementById('q');
@@ -542,6 +801,19 @@ function renderList(){
     theme = theme==='dark'?'light':'dark'; store.set('hj_theme',theme); applyTheme();
     document.getElementById('themeBtn').textContent = theme==='dark'?'☀️':'🌙';
   };
+  if(currentUser){
+    document.getElementById('adminBtn').onclick = doLogout;
+    document.getElementById('addHymnBtn').onclick = ()=> openModal('add');
+    const sb = document.getElementById('seedBtn');
+    if(sb) sb.onclick = async ()=>{
+      if(!hymnsEmpty && !confirm(`Firestore의 찬송을 앱 내장 원본 ${HYMNS_SEED.length}곡으로 덮어씁니다.\n앱에서 직접 수정하신 내용이 있으면 사라집니다. 계속할까요?`)) return;
+      const orig = sb.textContent; sb.disabled = true; sb.textContent = '처리 중…';
+      try{ await seedHymns(); sb.textContent = '완료 ✓'; }
+      catch(e){ alert('실패: ' + e.message); sb.disabled = false; sb.textContent = orig; } };
+  } else {
+    document.getElementById('secretA').onclick = ()=> secretTap('A');
+    document.getElementById('secretB').onclick = ()=> secretTap('B');
+  }
   renderListItems();
 }
 
@@ -585,6 +857,10 @@ function renderRead(h){
           ${b.label?`<div class="lbl">${escapeHtml(b.label)}</div>`:''}
           <p>${escapeHtml(b.text)}</p>
         </div>`).join('')}
+      ${currentUser ? `<div class="admin-row">
+        <button id="editHymn">✎ 수정</button>
+        <button class="del" id="delHymn">✕ 삭제</button>
+      </div>` : ''}
     </div>
     <div class="actions">
       <button class="nav" id="navPrev" ${prev?'':'disabled'} aria-label="이전 찬송">‹</button>
@@ -593,6 +869,10 @@ function renderRead(h){
     </div>
   `;
   document.getElementById('backBtn').onclick = ()=> go('#/');
+  if(currentUser){
+    document.getElementById('editHymn').onclick = ()=> openModal('edit', h);
+    document.getElementById('delHymn').onclick = ()=> deleteHymn(h);
+  }
   document.getElementById('themeBtn').onclick = ()=>{
     theme = theme==='dark'?'light':'dark'; store.set('hj_theme',theme); applyTheme(); renderRead(h);
   };
