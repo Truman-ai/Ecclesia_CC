@@ -14,6 +14,7 @@
   :root{
     --bg:#fdf7ea; --surface:#ffffff; --ink:#2c2013; --muted:#8a7f6c; --line:#ece2cc;
     --accent:#ff842c; --accent-ink:#9a4a10; --sun:#d1603f; --sat:#3e6fae;
+    --danger:#c0392b;
     --safe-t:env(safe-area-inset-top,0px);
     --safe-b:env(safe-area-inset-bottom,0px);
   }
@@ -25,15 +26,19 @@
     -webkit-font-smoothing:antialiased;
   }
   button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  input{font:inherit;color:inherit}
   .app{max-width:460px;margin:0 auto;min-height:100%;padding-bottom:calc(var(--safe-b) + 24px)}
 
-  .bar{
-    display:flex;align-items:center;gap:10px;
-    padding:calc(var(--safe-t) + 14px) 18px 12px;
-  }
+  .bar{display:flex;align-items:center;gap:10px;padding:calc(var(--safe-t) + 14px) 18px 12px}
   .bar a.home{width:30px;height:30px;flex:none;display:block}
   .bar a.home img{width:100%;height:100%;border-radius:8px;display:block}
   .bar h1{flex:1;font-size:18px;font-weight:800;letter-spacing:-.01em}
+  .bar .adminBtn{
+    flex:none;font-size:12px;font-weight:700;color:var(--accent-ink);
+    border:1px solid var(--accent);border-radius:999px;padding:6px 11px;
+    background:color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .bar .secretZone{flex:none;width:36px;height:36px}
 
   .cal{margin:6px 18px 0;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px 14px 10px}
   .cal-head{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 14px}
@@ -63,10 +68,13 @@
   .day .dots i{width:5px;height:5px;border-radius:50%;flex:none}
   .day .dots .more{width:auto;height:auto;border-radius:0;font-size:8px;font-weight:800;color:var(--muted);line-height:1}
 
-  .section-title-row{display:flex;align-items:baseline;justify-content:space-between;margin:26px 18px 10px}
+  .section-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:26px 18px 10px}
   .section-title{font-size:13px;font-weight:800;color:var(--muted);letter-spacing:.02em;text-transform:uppercase}
   .section-title .label{text-transform:none;color:var(--ink);font-size:14px}
+  .row-actions{display:flex;align-items:center;gap:12px;flex:none}
   .clear{font-size:12px;font-weight:700;color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
+  .addBtn{font-size:12px;font-weight:800;color:var(--accent-ink);
+    background:color-mix(in srgb, var(--accent) 16%, transparent);border-radius:999px;padding:6px 11px}
 
   .events{padding:0 18px;display:flex;flex-direction:column;gap:10px}
   .ev{
@@ -82,23 +90,67 @@
     background:color-mix(in srgb, var(--accent) 16%, transparent);
     padding:5px 9px;border-radius:999px;white-space:nowrap;
   }
-  .empty{padding:30px 18px;text-align:center;color:var(--muted);font-size:13px}
+  .ev .iconbtn{flex:none;font-size:15px;color:var(--muted);padding:4px}
+  .ev .iconbtn.del{color:var(--danger)}
+  .ev.linked{cursor:pointer}
+  .ev.linked:active{background:var(--bg)}
+  .ev .linkChev{flex:none;color:var(--muted);font-size:17px}
+  .empty{padding:30px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.7}
+  .loading{padding:40px 18px;text-align:center;color:var(--muted);font-size:13px}
+
+  /* ---------- 모달(로그인 · 추가/수정) ---------- */
+  .backdrop{position:fixed;inset:0;background:rgba(20,15,8,.45);z-index:200;
+    display:flex;align-items:flex-end;justify-content:center}
+  @media (min-width:520px){ .backdrop{align-items:center} }
+  .sheet{
+    width:100%;max-width:440px;background:var(--surface);border-radius:22px 22px 0 0;
+    padding:22px 22px calc(var(--safe-b) + 22px);
+  }
+  @media (min-width:520px){ .sheet{border-radius:22px} }
+  .sheet h2{font-size:17px;font-weight:800;margin-bottom:16px;letter-spacing:-.01em}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .field input{
+    width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:12px;
+    background:var(--bg);font-size:15px;
+  }
+  .field input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .row2{display:flex;gap:10px}
+  .row2 .field{flex:1}
+  .err{font-size:12.5px;color:var(--danger);margin:-6px 0 12px}
+  .btns{display:flex;gap:10px;margin-top:6px}
+  .btns button{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:700}
+  .btn-cancel{background:var(--bg);border:1px solid var(--line)}
+  .btn-save{background:var(--ink);color:var(--bg)}
+  .btn-save:disabled{opacity:.5}
 </style>
 </head>
 <body>
 <div class="app" id="app"></div>
+<div id="modalRoot"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script>
-/* 등록 일정 — 날짜만(YYYY-MM-DD), 기간 등록. color는 달력 점·카드 색 */
+/* ---------- Firebase 초기화 ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyAlhXqaMgI3phBuH7LaFI339TrPLQaqCWA",
+  authDomain: "ecclesiacc-b33d8.firebaseapp.com",
+  projectId: "ecclesiacc-b33d8",
+  storageBucket: "ecclesiacc-b33d8.firebasestorage.app",
+  messagingSenderId: "958593730476",
+  appId: "1:958593730476:web:16cbcb1f9159027db3dc09"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence().catch(()=>{}); // 오프라인 캐시(여러 탭이면 실패할 수 있음, 무시)
+
+// 로그인 화면엔 비밀번호만 보이고, 이 이메일은 내부적으로 고정해서 씀(Firebase Auth 사양상 이메일이 필요함)
+const ADMIN_EMAIL = "admin@ecclesiacc-b33d8.firebaseapp.com";
+
 const PALETTE = ['#ff842c', '#7f8f4a', '#a9835a', '#3e6fae', '#c2564f', '#8a63b0'];
-const EVENTS_RAW = [
-  { title:"토론토 노동절집회",       start:"2026-09-05", end:"2026-09-08" },
-  { title:"한국 가을집회",           start:"2026-10-08", end:"2026-10-11" },
-  { title:"진순자매님 출국",         start:"2026-10-13", end:"2026-10-13" },
-  { title:"태국 집회",               start:"2026-10-16", end:"2026-10-18" },
-  { title:"토론토 자매님들 방문",     start:"2026-10-30", end:"2026-11-02" }
-];
-const EVENTS = EVENTS_RAW.map((e,i)=>({ ...e, color: PALETTE[i % PALETTE.length] }));
 
 const WD = ['일','월','화','수','목','금','토'];
 const pad2 = n => String(n).padStart(2,'0');
@@ -106,16 +158,43 @@ const ymd = (y,m,d) => `${y}-${pad2(m)}-${pad2(d)}`;
 const parseYMD = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
 const fmtMD = s => { const dt = parseYMD(s); return `${dt.getMonth()+1}월 ${dt.getDate()}일(${WD[dt.getDay()]})`; };
 const daysBetween = (a,b) => Math.round((parseYMD(b) - parseYMD(a)) / 86400000);
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 const today = new Date();
 const todayStr = ymd(today.getFullYear(), today.getMonth()+1, today.getDate());
 let viewY = today.getFullYear(), viewM = today.getMonth(); // 0-indexed
-let selectedDate = null; // 'YYYY-MM-DD' | null
+let selectedDate = null;   // 'YYYY-MM-DD' | null
+let EVENTS = [];
+let loaded = false;
+let currentUser = null;
 
+/* ---------- Firestore 실시간 동기화 ----------
+   onSnapshot은 오류가 한 번 나면 그 구독이 완전히 끊기고 다시 살아나지 않으므로,
+   오류 시 잠시 후 재구독해서 스스로 복구하게 함(예: 규칙 게시 직후의 일시적 권한 오류 등). */
+function subscribeEvents(){
+  db.collection('events').orderBy('start').onSnapshot(snap=>{
+    EVENTS = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    loaded = true;
+    render();
+  }, err=>{
+    console.error(err);
+    loaded = true;
+    render();
+    setTimeout(subscribeEvents, 4000);
+  });
+}
+subscribeEvents();
+
+auth.onAuthStateChanged(user=>{
+  currentUser = user;
+  closeModal();
+  render();
+});
+
+/* ---------- 조회용 헬퍼 ---------- */
 function eventsOn(dateStr){
   return EVENTS.filter(e => e.start <= dateStr && dateStr <= e.end);
 }
-
 function withDist(e){
   let dist, status;
   if(todayStr < e.start){ dist = daysBetween(todayStr, e.start); status = 'upcoming'; }
@@ -123,7 +202,6 @@ function withDist(e){
   else { dist = 0; status = 'ongoing'; }
   return { ...e, dist, status };
 }
-
 function nearestEvents(){
   return EVENTS.map(withDist).sort((a,b)=>{
     const rank = s => s==='past' ? 1 : 0;
@@ -131,23 +209,30 @@ function nearestEvents(){
     return a.dist - b.dist;
   }).slice(0,3);
 }
-
 function ddayLabel(e){
   return e.status==='ongoing' ? '진행중' : e.status==='past' ? '종료' : `D-${e.dist}`;
 }
+function nextColor(){ return PALETTE[EVENTS.length % PALETTE.length]; }
 
 function eventCard(e){
+  const admin = currentUser ? `
+    <button class="iconbtn edit" data-id="${e.id}" aria-label="수정">✎</button>
+    <button class="iconbtn del" data-id="${e.id}" aria-label="삭제">✕</button>` : '';
+  const hasLink = !!e.link;
   return `
-    <div class="ev">
-      <div class="bar-color" style="background:${e.color}"></div>
+    <div class="ev${hasLink?' linked':''}" ${hasLink?`data-link="${escapeHtml(e.link)}"`:''}>
+      <div class="bar-color" style="background:${e.color || '#ff842c'}"></div>
       <div class="body">
         <div class="title">${escapeHtml(e.title)}</div>
         <div class="date">${e.start === e.end ? fmtMD(e.start) : `${fmtMD(e.start)} ~ ${fmtMD(e.end)}`}</div>
       </div>
       <div class="dday">${ddayLabel(e)}</div>
+      ${hasLink?'<div class="linkChev">›</div>':''}
+      ${admin}
     </div>`;
 }
 
+/* ---------- 메인 렌더 ---------- */
 function render(){
   const app = document.getElementById('app');
   const first = new Date(viewY, viewM, 1);
@@ -167,37 +252,46 @@ function render(){
     const shown = dayEvents.slice(0,3);
     const extra = dayEvents.length - shown.length;
     const dotsHtml = dayEvents.length
-      ? `<div class="dots">${shown.map(e=>`<i style="background:${e.color}"></i>`).join('')}${extra>0?`<i class="more">+${extra}</i>`:''}</div>`
+      ? `<div class="dots">${shown.map(e=>`<i style="background:${e.color || '#ff842c'}"></i>`).join('')}${extra>0?`<i class="more">+${extra}</i>`:''}</div>`
       : `<div class="dots"></div>`;
     const cls = ['day','pick', wd===0?'sun':'', wd===6?'sat':'', isToday?'today':'', isSelected?'selected':''].filter(Boolean).join(' ');
     cells += `<div class="${cls}" data-date="${dateStr}"><span class="n">${dayNum}</span>${dotsHtml}</div>`;
   }
 
-  const eventsSectionHtml = selectedDate ? (()=>{
+  const addBtn = currentUser ? `<button class="addBtn" id="addBtn">+ 새 일정</button>` : '';
+
+  let eventsSectionHtml;
+  if(!loaded){
+    eventsSectionHtml = `<div class="loading">일정 불러오는 중…</div>`;
+  } else if(selectedDate){
     const dt = parseYMD(selectedDate);
     const label = `${dt.getMonth()+1}월 ${dt.getDate()}일(${WD[dt.getDay()]})`;
     const list = eventsOn(selectedDate).map(withDist);
-    return `
+    eventsSectionHtml = `
       <div class="section-title-row">
         <div class="section-title"><span class="label">${label}</span></div>
-        <button class="clear" id="clearSel">오늘 기준으로 보기</button>
+        <div class="row-actions">${addBtn}<button class="clear" id="clearSel">오늘 기준으로 보기</button></div>
       </div>
       <div class="events">${list.length ? list.map(eventCard).join('') : '<div class="empty">이 날짜에는 일정이 없습니다</div>'}</div>
     `;
-  })() : (()=>{
+  } else {
     const near = nearestEvents();
-    return `
+    eventsSectionHtml = `
       <div class="section-title-row">
         <div class="section-title">다가오는 일정</div>
+        <div class="row-actions">${addBtn}</div>
       </div>
       <div class="events">${near.length ? near.map(eventCard).join('') : '<div class="empty">등록된 일정이 없습니다</div>'}</div>
     `;
-  })();
+  }
 
   app.innerHTML = `
     <div class="bar">
       <a class="home" href="./index.html" aria-label="홈으로"><img src="./logo-mark.png" alt=""></a>
       <h1>일정</h1>
+      ${currentUser
+        ? `<button class="adminBtn" id="adminBtn">관리자 모드</button>`
+        : `<button class="secretZone" id="secretZone" aria-hidden="true" tabindex="-1"></button>`}
     </div>
     <div class="cal">
       <div class="cal-head">
@@ -222,9 +316,144 @@ function render(){
       render();
     };
   });
+  if(currentUser){
+    document.getElementById('adminBtn').onclick = doLogout;
+  } else {
+    document.getElementById('secretZone').onclick = secretTap;
+  }
+  const addB = document.getElementById('addBtn');
+  if(addB) addB.onclick = ()=> openModal('add');
+  app.querySelectorAll('.iconbtn.edit').forEach(b=>{
+    b.onclick = ()=> openModal('edit', EVENTS.find(e=>e.id===b.dataset.id));
+  });
+  app.querySelectorAll('.iconbtn.del').forEach(b=>{
+    b.onclick = ()=> doDelete(b.dataset.id);
+  });
+  app.querySelectorAll('.ev.linked').forEach(el=>{
+    el.onclick = e=>{
+      if(e.target.closest('.iconbtn')) return; // 수정·삭제 버튼 클릭이면 링크 이동 안 함
+      window.open(el.dataset.link, '_blank', 'noopener,noreferrer');
+    };
+  });
 }
 
-function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+/* ---------- 모달: 로그인 / 추가·수정 ---------- */
+function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+
+function openModal(mode, event){
+  const root = document.getElementById('modalRoot');
+  if(mode === 'login'){
+    root.innerHTML = `
+      <div class="backdrop" id="bd">
+        <div class="sheet">
+          <h2>관리자 로그인</h2>
+          <div class="field"><label>비밀번호</label><input id="fPw" type="password" autocomplete="current-password" autofocus></div>
+          <div class="err" id="fErr" style="display:none"></div>
+          <div class="btns">
+            <button class="btn-cancel" id="cancel">취소</button>
+            <button class="btn-save" id="save">로그인</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('cancel').onclick = closeModal;
+    document.getElementById('bd').onclick = e=>{ if(e.target.id === 'bd') closeModal(); };
+    const pwInput = document.getElementById('fPw');
+    pwInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') document.getElementById('save').click(); });
+    document.getElementById('save').onclick = async ()=>{
+      const pw = pwInput.value;
+      const err = document.getElementById('fErr');
+      const btn = document.getElementById('save');
+      btn.disabled = true;
+      try{
+        await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pw);
+        // onAuthStateChanged가 모달을 닫고 다시 그림
+      }catch(e){
+        err.textContent = `로그인 실패 (${e.code}): ${e.message}`;
+        err.style.display = 'block';
+        btn.disabled = false;
+      }
+    };
+    return;
+  }
+
+  // add / edit
+  const isEdit = mode === 'edit';
+  const t = isEdit ? event.title : '';
+  const s = isEdit ? event.start : (selectedDate || todayStr);
+  const en = isEdit ? event.end : (selectedDate || todayStr);
+  const lk = isEdit && event.link ? event.link : '';
+  root.innerHTML = `
+    <div class="backdrop" id="bd">
+      <div class="sheet">
+        <h2>${isEdit ? '일정 수정' : '새 일정'}</h2>
+        <div class="field"><label>일정 이름</label><input id="fTitle" type="text" value="${escapeHtml(t)}" placeholder="예: 가을집회"></div>
+        <div class="row2">
+          <div class="field"><label>시작일</label><input id="fStart" type="date" value="${s}"></div>
+          <div class="field"><label>종료일</label><input id="fEnd" type="date" value="${en}"></div>
+        </div>
+        <div class="field"><label>링크 (선택)</label><input id="fLink" type="url" value="${escapeHtml(lk)}" placeholder="탭하면 이동할 주소, 없으면 비워두세요"></div>
+        <div class="err" id="fErr" style="display:none"></div>
+        <div class="btns">
+          <button class="btn-cancel" id="cancel">취소</button>
+          <button class="btn-save" id="save">${isEdit ? '저장' : '추가'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancel').onclick = closeModal;
+  document.getElementById('bd').onclick = e=>{ if(e.target.id === 'bd') closeModal(); };
+  document.getElementById('save').onclick = async ()=>{
+    const title = document.getElementById('fTitle').value.trim();
+    const start = document.getElementById('fStart').value;
+    const end = document.getElementById('fEnd').value;
+    let link = document.getElementById('fLink').value.trim();
+    if(link && !/^https?:\/\//i.test(link)) link = 'https://' + link;
+    const err = document.getElementById('fErr');
+    if(!title || !start || !end || end < start){
+      err.textContent = !title ? '일정 이름을 입력해주세요.' : '종료일은 시작일보다 빠를 수 없습니다.';
+      err.style.display = 'block';
+      return;
+    }
+    const btn = document.getElementById('save');
+    btn.disabled = true;
+    try{
+      if(isEdit){
+        await db.collection('events').doc(event.id).update({
+          title, start, end,
+          link: link || firebase.firestore.FieldValue.delete()
+        });
+      } else {
+        await db.collection('events').add({ title, start, end, color: nextColor(), ...(link ? {link} : {}) });
+      }
+      closeModal();
+    }catch(e){
+      err.textContent = '저장에 실패했습니다: ' + e.message;
+      err.style.display = 'block';
+      btn.disabled = false;
+    }
+  };
+}
+
+async function doDelete(id){
+  const ev = EVENTS.find(e=>e.id===id);
+  if(!ev) return;
+  if(!confirm(`"${ev.title}" 일정을 삭제할까요?`)) return;
+  try{ await db.collection('events').doc(id).delete(); }
+  catch(e){ alert('삭제 실패: ' + e.message); }
+}
+async function doLogout(){ await auth.signOut(); }
+
+/* ---------- 숨긴 관리자 진입: 제목 옆 빈 공간을 7번 연속(2.5초 안에) 탭 ---------- */
+let secretCount = 0, secretTimer = null;
+function secretTap(){
+  secretCount++;
+  clearTimeout(secretTimer);
+  secretTimer = setTimeout(()=>{ secretCount = 0; }, 2500);
+  if(secretCount >= 7){
+    secretCount = 0;
+    clearTimeout(secretTimer);
+    openModal('login');
+  }
+}
 
 render();
 
