@@ -38,6 +38,7 @@
     border:1px solid var(--accent);border-radius:999px;padding:6px 11px;
     background:color-mix(in srgb, var(--accent) 14%, transparent);
   }
+  .bar .secretPair{flex:none;display:flex;gap:50px}
   .bar .secretZone{flex:none;width:36px;height:36px}
 
   .cal{margin:6px 18px 0;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px 14px 10px}
@@ -291,7 +292,10 @@ function render(){
       <h1>일정</h1>
       ${currentUser
         ? `<button class="adminBtn" id="adminBtn">관리자 모드</button>`
-        : `<button class="secretZone" id="secretZone" aria-hidden="true" tabindex="-1"></button>`}
+        : `<span class="secretPair">
+             <button class="secretZone" id="secretB" aria-hidden="true" tabindex="-1"></button>
+             <button class="secretZone" id="secretA" aria-hidden="true" tabindex="-1"></button>
+           </span>`}
     </div>
     <div class="cal">
       <div class="cal-head">
@@ -319,7 +323,8 @@ function render(){
   if(currentUser){
     document.getElementById('adminBtn').onclick = doLogout;
   } else {
-    document.getElementById('secretZone').onclick = secretTap;
+    document.getElementById('secretA').onclick = ()=> secretTap('A');
+    document.getElementById('secretB').onclick = ()=> secretTap('B');
   }
   const addB = document.getElementById('addBtn');
   if(addB) addB.onclick = ()=> openModal('add');
@@ -442,14 +447,21 @@ async function doDelete(id){
 }
 async function doLogout(){ await auth.signOut(); }
 
-/* ---------- 숨긴 관리자 진입: 제목 옆 빈 공간을 7번 연속(2.5초 안에) 탭 ---------- */
-let secretCount = 0, secretTimer = null;
-function secretTap(){
-  secretCount++;
+/* ---------- 숨긴 관리자 진입: 오른쪽 위 두 영역을 A→B→A→B 순서로 탭(2.5초 안에) ---------- */
+const SECRET_SEQ = ['A','B','A','B'];
+let secretSeq = [], secretTimer = null;
+function secretTap(which){
   clearTimeout(secretTimer);
-  secretTimer = setTimeout(()=>{ secretCount = 0; }, 2500);
-  if(secretCount >= 7){
-    secretCount = 0;
+  secretTimer = setTimeout(()=>{ secretSeq = []; }, 2500);
+  secretSeq.push(which);
+  const matchesPrefix = secretSeq.every((v,i)=> v === SECRET_SEQ[i]);
+  if(!matchesPrefix){
+    // 순서가 틀리면 초기화(방금 누른 게 정답 첫 글자면 그걸로 새로 시작)
+    secretSeq = (which === SECRET_SEQ[0]) ? [which] : [];
+    return;
+  }
+  if(secretSeq.length === SECRET_SEQ.length){
+    secretSeq = [];
     clearTimeout(secretTimer);
     openModal('login');
   }
