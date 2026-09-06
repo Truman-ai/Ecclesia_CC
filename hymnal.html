@@ -141,11 +141,7 @@
   .present-view.light .pstage p.refrain{color:#c0392b}
   .ptap{position:absolute;inset:0;display:flex}
   .ptap span{flex:1}
-  .phint{
-    text-align:center;font-size:12px;opacity:.4;
-    padding:0 16px calc(var(--safe-b) + 14px);
-  }
-  .dots{display:flex;gap:6px;justify-content:center;padding:6px 0 2px;flex-wrap:wrap}
+  .dots{display:flex;gap:6px;justify-content:center;padding:6px 0 calc(var(--safe-b) + 8px);flex-wrap:wrap}
   .dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.25}
   .dots i.on{opacity:.9}
 
@@ -929,7 +925,6 @@ function renderPresent(h){
         <div class="ptap"><span data-d="-1"></span><span data-d="1"></span></div>
       </div>
       <div class="dots" id="pDots"></div>
-      <div class="phint">화면을 탭하면 다음 · 왼쪽 탭은 이전</div>
     </div>
   `;
   const pv = document.getElementById('pv');
@@ -977,12 +972,8 @@ function renderPresent(h){
 let presentKeyHandler = null;
 let presentResizeHandler = null;
 
-/* ---------- 띄우기 진입: 전체화면 + 가로 고정 (되는 기기에서만; iPhone은 미지원이라 무시) ---------- */
+/* ---------- 띄우기 진입: 가로 방향 고정 시도 (되는 기기에서만; 안 되면 조용히 무시) ---------- */
 async function enterPresent(n){
-  try{
-    const el = document.documentElement;
-    if(!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
-  }catch(e){}
   try{
     if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
   }catch(e){}
@@ -990,7 +981,6 @@ async function enterPresent(n){
 }
 function exitPresentChrome(){
   try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
-  try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); }catch(e){}
 }
 
 /* ---------- 화면 꺼짐 방지 ---------- */
