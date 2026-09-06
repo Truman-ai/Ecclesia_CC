@@ -972,8 +972,12 @@ function renderPresent(h){
 let presentKeyHandler = null;
 let presentResizeHandler = null;
 
-/* ---------- 띄우기 진입: 가로 방향 고정 시도 (되는 기기에서만; 안 되면 조용히 무시) ---------- */
+/* ---------- 띄우기 진입: 전체화면 + 가로 고정 (되는 기기에서만; iPhone은 미지원이라 무시) ---------- */
 async function enterPresent(n){
+  try{
+    const el = document.documentElement;
+    if(!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
+  }catch(e){}
   try{
     if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
   }catch(e){}
@@ -981,6 +985,7 @@ async function enterPresent(n){
 }
 function exitPresentChrome(){
   try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
+  try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); }catch(e){}
 }
 
 /* ---------- 화면 꺼짐 방지 ---------- */
