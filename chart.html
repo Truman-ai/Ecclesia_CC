@@ -58,11 +58,10 @@
   }
   .viewer .vbar button{width:34px;height:34px;font-size:18px;color:inherit}
   .viewer .vbar .title{flex:1;font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .stage{flex:1;position:relative;overflow:hidden;touch-action:none;display:flex;align-items:center;justify-content:center}
+  .stage{flex:1;position:relative;overflow:hidden;touch-action:none;display:flex;align-items:center;justify-content:center;padding-bottom:calc(var(--safe-b) + 8px)}
   .stage img{max-width:92%;max-height:92%;object-fit:contain;user-select:none;-webkit-user-drag:none;
     will-change:transform;transform-origin:center center;touch-action:none}
   .stage .miss{color:#c9c2b2;font-size:13px;text-align:center;padding:0 30px;line-height:1.7}
-  .vhint{text-align:center;color:#c9c2b2;font-size:11px;padding:0 16px calc(var(--safe-b) + 12px);opacity:.7}
 </style>
 </head>
 <body>
@@ -120,7 +119,22 @@ function markMissing(i){
 }
 
 /* ---------- 뷰어: 핀치줌 · 팬 · 더블탭 확대 ---------- */
+async function enterChartChrome(){
+  try{
+    const el = document.documentElement;
+    if(!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
+  }catch(e){}
+  try{
+    if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+  }catch(e){}
+}
+function exitChartChrome(){
+  try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
+  try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); }catch(e){}
+}
+
 function openViewer(file){
+  enterChartChrome();
   app.insertAdjacentHTML('beforeend', `
     <div class="viewer" id="viewer">
       <div class="vbar">
@@ -131,7 +145,6 @@ function openViewer(file){
       <div class="stage" id="stage">
         <img id="vimg" src="${DIR}${encodeURIComponent(file)}" alt="" draggable="false">
       </div>
-      <div class="vhint">손가락 두 개로 확대 · 더블탭으로 확대/축소</div>
     </div>
   `);
   const viewer = document.getElementById('viewer');
@@ -235,6 +248,7 @@ function openViewer(file){
   }, {passive:false});
 
   function close(){
+    exitChartChrome();
     document.body.style.overflow = '';
     viewer.remove();
   }
