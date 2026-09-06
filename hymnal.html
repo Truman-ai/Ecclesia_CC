@@ -758,6 +758,7 @@ let searchTerm = '';
 function render(){
   const r = parseHash();
   releaseWakeLock();
+  if(r.view !== 'present') exitPresentChrome();
   if(r.view === 'list')  return renderList();
   const hymn = HYMNS.find(x => x.n === r.n);
   if(!hymn){ go('#/'); return; }
@@ -878,7 +879,7 @@ function renderRead(h){
   };
   document.getElementById('minus').onclick = ()=>{ scale = clampScale(scale-0.1); store.set('hj_scale',scale); applyScale(); };
   document.getElementById('plus').onclick  = ()=>{ scale = clampScale(scale+0.1); store.set('hj_scale',scale); applyScale(); };
-  document.getElementById('presentBtn').onclick = ()=> go('#/h/'+h.n+'/present');
+  document.getElementById('presentBtn').onclick = ()=> enterPresent(h.n);
   if(prev) document.getElementById('navPrev').onclick = ()=> go('#/h/'+prev.n);
   if(next) document.getElementById('navNext').onclick = ()=> go('#/h/'+next.n);
   window.scrollTo(0,0);
@@ -975,6 +976,22 @@ function renderPresent(h){
 }
 let presentKeyHandler = null;
 let presentResizeHandler = null;
+
+/* ---------- 띄우기 진입: 전체화면 + 가로 고정 (되는 기기에서만; iPhone은 미지원이라 무시) ---------- */
+async function enterPresent(n){
+  try{
+    const el = document.documentElement;
+    if(!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
+  }catch(e){}
+  try{
+    if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+  }catch(e){}
+  go('#/h/'+n+'/present');
+}
+function exitPresentChrome(){
+  try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
+  try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); }catch(e){}
+}
 
 /* ---------- 화면 꺼짐 방지 ---------- */
 let wakeLock = null;
