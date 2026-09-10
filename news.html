@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fdf7ea">
+<title>소식 · 에클레시아 춘천</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#fdf7ea; --surface:#ffffff; --ink:#2c2013; --muted:#8a7f6c; --line:#ece2cc;
+    --accent:#3e6fae; --accent-ink:#28466f; --danger:#c0392b;
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  input,select,textarea{font:inherit;color:inherit}
+  .app{max-width:460px;margin:0 auto;min-height:100%;padding-bottom:calc(var(--safe-b) + 24px)}
+
+  .bar{display:flex;align-items:center;gap:10px;padding:calc(var(--safe-t) + 14px) 18px 12px}
+  .bar a.home{width:30px;height:30px;flex:none;display:block}
+  .bar a.home img{width:100%;height:100%;border-radius:8px;display:block}
+  .bar h1{flex:1;font-size:18px;font-weight:800;letter-spacing:-.01em}
+  .bar .secretPair{flex:none;display:flex;gap:50px}
+  .bar .secretZone{flex:none;width:36px;height:36px}
+  .bar .adminBtn{flex:none;font-size:12px;font-weight:700;color:#fff;background:var(--accent);
+    border-radius:999px;padding:6px 11px}
+
+  .addBtn{margin:6px 18px 4px;width:calc(100% - 36px);padding:12px;border-radius:12px;
+    border:1px solid var(--accent);color:var(--accent);font-weight:800;font-size:14px}
+
+  .list{padding:8px 18px;display:flex;flex-direction:column;gap:12px}
+  .post{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:15px 16px}
+  .post-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .badge{flex:none;font-size:11.5px;font-weight:800;color:#fff;border-radius:999px;padding:4px 9px}
+  .pdate{flex:1;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .post-head .iconbtn{flex:none;font-size:14px;color:var(--muted);padding:3px}
+  .post-head .iconbtn.del{color:var(--danger)}
+  .ptitle{font-size:16px;font-weight:700;letter-spacing:-.01em;line-height:1.4}
+  .pbody{font-size:13.5px;color:var(--ink);opacity:.85;margin-top:6px;white-space:pre-wrap;line-height:1.65}
+  .pvideo{position:relative;width:100%;aspect-ratio:16/9;margin-top:12px;border-radius:12px;overflow:hidden;background:#000}
+  .pvideo iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .plinks{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .plink{font-size:12.5px;font-weight:700;color:var(--accent-ink);text-decoration:none;
+    background:color-mix(in srgb, var(--accent) 14%, transparent);border-radius:10px;padding:7px 11px}
+
+  .empty,.loading{padding:40px 18px;text-align:center;color:var(--muted);font-size:13px}
+
+  /* ---------- 모달 ---------- */
+  .backdrop{position:fixed;inset:0;background:rgba(20,15,8,.45);z-index:200;
+    display:flex;align-items:flex-end;justify-content:center}
+  @media (min-width:560px){ .backdrop{align-items:center} }
+  .sheet{width:100%;max-width:480px;background:var(--surface);border-radius:22px 22px 0 0;
+    padding:22px 22px calc(var(--safe-b) + 22px);max-height:92vh;overflow:auto}
+  @media (min-width:560px){ .sheet{border-radius:22px} }
+  .sheet h2{font-size:17px;font-weight:800;margin-bottom:16px;letter-spacing:-.01em}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .field input,.field select,.field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);
+    border-radius:12px;background:var(--bg);font-size:15px;font-family:inherit}
+  .field textarea{min-height:96px;line-height:1.6;resize:vertical}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .field .hint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+  .link-row{display:flex;gap:6px;margin-bottom:8px}
+  .link-row .lk-label{flex:0 0 34%;min-width:0}
+  .link-row .lk-url{flex:1;min-width:0}
+  .link-row .lk-del{flex:none;width:34px;border:1px solid var(--line);border-radius:10px;color:var(--muted)}
+  .link-add{font-size:12.5px;font-weight:700;color:var(--accent-ink)}
+  .err{font-size:12.5px;color:var(--danger);margin:-6px 0 12px}
+  .btns{display:flex;gap:10px;margin-top:6px}
+  .btns button{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:700}
+  .btn-cancel{background:var(--bg);border:1px solid var(--line)}
+  .btn-save{background:var(--ink);color:var(--bg)}
+  .btn-save:disabled{opacity:.5}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div id="modalRoot"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAlhXqaMgI3phBuH7LaFI339TrPLQaqCWA",
+  authDomain: "ecclesiacc-b33d8.firebaseapp.com",
+  projectId: "ecclesiacc-b33d8",
+  storageBucket: "ecclesiacc-b33d8.firebasestorage.app",
+  messagingSenderId: "958593730476",
+  appId: "1:958593730476:web:16cbcb1f9159027db3dc09"
+};
+const ADMIN_EMAIL = "admin@ecclesiacc-b33d8.firebaseapp.com";
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence().catch(()=>{});
+
+const TYPES = {
+  '공지': { icon:'📢', color:'#c2564f' },
+  '집회': { icon:'🗓️', color:'#e07b1e' },
+  '칼럼': { icon:'✍️', color:'#8a63b0' },
+  '자료': { icon:'📄', color:'#3e6fae' },
+  '영상': { icon:'🎥', color:'#c0392b' }
+};
+const TYPE_KEYS = Object.keys(TYPES);
+
+const pad2 = n => String(n).padStart(2,'0');
+const todayStr = (()=>{ const d=new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; })();
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtDate(s){ return s ? s.replace(/-/g,'.') : ''; }
+
+/* 유튜브 URL이면 영상 ID 추출, 아니면 null */
+function ytId(url){
+  if(!url) return null;
+  try{
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./,'');
+    if(host === 'youtu.be') return u.pathname.slice(1).split('/')[0] || null;
+    if(host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com'){
+      if(u.pathname === '/watch') return u.searchParams.get('v');
+      const m = u.pathname.match(/^\/(embed|live|shorts|v)\/([^/?#]+)/);
+      if(m) return m[2];
+    }
+  }catch(e){}
+  return null;
+}
+
+let POSTS = [], loaded = false, currentUser = null;
+
+function subscribePosts(){
+  db.collection('posts').orderBy('date','desc').onSnapshot(snap=>{
+    POSTS = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    loaded = true; render();
+  }, err=>{
+    console.error(err); loaded = true; render();
+    setTimeout(subscribePosts, 4000);
+  });
+}
+subscribePosts();
+auth.onAuthStateChanged(u=>{ currentUser = u; closeModal(); render(); });
+async function doLogout(){ await auth.signOut(); }
+
+/* ---------- 숨긴 관리자 진입: A→B→A→B ---------- */
+const SECRET_SEQ = ['A','B','A','B'];
+let secretSeq = [], secretTimer = null;
+function secretTap(which){
+  clearTimeout(secretTimer);
+  secretTimer = setTimeout(()=>{ secretSeq = []; }, 2500);
+  secretSeq.push(which);
+  if(!secretSeq.every((v,i)=> v === SECRET_SEQ[i])){
+    secretSeq = (which === SECRET_SEQ[0]) ? [which] : [];
+    return;
+  }
+  if(secretSeq.length === SECRET_SEQ.length){
+    secretSeq = []; clearTimeout(secretTimer); openModal('login');
+  }
+}
+
+/* ---------- 렌더 ---------- */
+function postCard(p){
+  const t = TYPES[p.type] || { icon:'•', color:'#8a7f6c' };
+  const admin = currentUser ? `
+    <button class="iconbtn edit" data-id="${p.id}" aria-label="수정">✎</button>
+    <button class="iconbtn del" data-id="${p.id}" aria-label="삭제">✕</button>` : '';
+  const all = Array.isArray(p.links) ? p.links.filter(l=>l && l.url) : [];
+  const videos = [], others = [];
+  all.forEach(l=>{ const id = ytId(l.url); if(id) videos.push(id); else others.push(l); });
+  return `
+    <div class="post">
+      <div class="post-head">
+        <span class="badge" style="background:${t.color}">${t.icon} ${escapeHtml(p.type || '')}</span>
+        <span class="pdate">${fmtDate(p.date)}</span>
+        ${admin}
+      </div>
+      <div class="ptitle">${escapeHtml(p.title || '')}</div>
+      ${p.body ? `<div class="pbody">${escapeHtml(p.body)}</div>` : ''}
+      ${videos.map(id=>`<div class="pvideo"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}" title="YouTube" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`).join('')}
+      ${others.length ? `<div class="plinks">${others.map(l=>
+        `<a class="plink" href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">↗ ${escapeHtml(l.label || '링크')}</a>`
+      ).join('')}</div>` : ''}
+    </div>`;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const adminCtl = currentUser
+    ? `<button class="adminBtn" id="adminBtn">관리자 모드</button>`
+    : `<span class="secretPair">
+         <button class="secretZone" id="secretB" aria-hidden="true" tabindex="-1"></button>
+         <button class="secretZone" id="secretA" aria-hidden="true" tabindex="-1"></button>
+       </span>`;
+
+  let body;
+  if(!loaded) body = `<div class="loading">불러오는 중…</div>`;
+  else if(!POSTS.length) body = `<div class="empty">등록된 소식이 없습니다</div>`;
+  else body = `<div class="list">${POSTS.map(postCard).join('')}</div>`;
+
+  app.innerHTML = `
+    <div class="bar">
+      <a class="home" href="./index.html" aria-label="홈으로"><img src="./logo-mark.png" alt=""></a>
+      <h1>소식</h1>
+      ${adminCtl}
+    </div>
+    ${currentUser ? `<button class="addBtn" id="addBtn">+ 새 소식</button>` : ''}
+    ${body}
+  `;
+
+  if(currentUser){
+    document.getElementById('adminBtn').onclick = doLogout;
+    document.getElementById('addBtn').onclick = ()=> openModal('add');
+    app.querySelectorAll('.iconbtn.edit').forEach(b=>{
+      b.onclick = ()=> openModal('edit', POSTS.find(p=>p.id===b.dataset.id));
+    });
+    app.querySelectorAll('.iconbtn.del').forEach(b=>{
+      b.onclick = ()=> doDelete(b.dataset.id);
+    });
+  } else {
+    document.getElementById('secretA').onclick = ()=> secretTap('A');
+    document.getElementById('secretB').onclick = ()=> secretTap('B');
+  }
+}
+
+/* ---------- 모달 ---------- */
+function closeModal(){ const r = document.getElementById('modalRoot'); if(r) r.innerHTML = ''; }
+
+function linkRowHtml(label, url){
+  return `<div class="link-row">
+    <input class="lk-label" type="text" placeholder="라벨" value="${escapeHtml(label||'')}">
+    <input class="lk-url" type="url" placeholder="https://... (유튜브 주소는 자동 재생)" value="${escapeHtml(url||'')}">
+    <button type="button" class="lk-del" aria-label="삭제">✕</button>
+  </div>`;
+}
+
+function openModal(mode, post){
+  const root = document.getElementById('modalRoot');
+  if(mode === 'login'){
+    root.innerHTML = `
+      <div class="backdrop" id="bd">
+        <div class="sheet">
+          <h2>관리자 로그인</h2>
+          <div class="field"><label>비밀번호</label><input id="fPw" type="password" autocomplete="current-password" autofocus></div>
+          <div class="err" id="fErr" style="display:none"></div>
+          <div class="btns">
+            <button class="btn-cancel" id="cancel">취소</button>
+            <button class="btn-save" id="save">로그인</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('cancel').onclick = closeModal;
+    document.getElementById('bd').onclick = e=>{ if(e.target.id === 'bd') closeModal(); };
+    const pw = document.getElementById('fPw');
+    pw.addEventListener('keydown', e=>{ if(e.key === 'Enter') document.getElementById('save').click(); });
+    document.getElementById('save').onclick = async ()=>{
+      const err = document.getElementById('fErr'), btn = document.getElementById('save');
+      btn.disabled = true;
+      try{ await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pw.value); }
+      catch(e){ err.textContent = `로그인 실패 (${e.code})`; err.style.display = 'block'; btn.disabled = false; }
+    };
+    return;
+  }
+
+  const isEdit = mode === 'edit';
+  const p = isEdit ? post : { type:'영상', title:'', date:todayStr, body:'', links:[] };
+  const rows = (p.links && p.links.length ? p.links : [{label:'',url:''}]).map(l=> linkRowHtml(l.label, l.url)).join('');
+  root.innerHTML = `
+    <div class="backdrop" id="bd">
+      <div class="sheet">
+        <h2>${isEdit ? '소식 수정' : '새 소식'}</h2>
+        <div class="field"><label>유형</label>
+          <select id="fType">${TYPE_KEYS.map(k=>`<option value="${k}" ${k===p.type?'selected':''}>${TYPES[k].icon} ${k}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>제목</label><input id="fTitle" type="text" value="${escapeHtml(p.title)}"></div>
+        <div class="field"><label>날짜</label><input id="fDate" type="date" value="${p.date || todayStr}"></div>
+        <div class="field"><label>내용 (선택)</label><textarea id="fBody">${escapeHtml(p.body || '')}</textarea></div>
+        <div class="field"><label>링크 (선택)</label>
+          <div id="linkRows">${rows}</div>
+          <button type="button" class="link-add" id="addLink">+ 링크 추가</button>
+          <div class="hint">유튜브 주소를 넣으면 카드 안에서 바로 재생됩니다. 문서는 구글드라이브 공유 링크를 붙여넣으세요.</div>
+        </div>
+        <div class="err" id="fErr" style="display:none"></div>
+        <div class="btns">
+          <button class="btn-cancel" id="cancel">취소</button>
+          <button class="btn-save" id="save">${isEdit ? '저장' : '추가'}</button>
+        </div>
+      </div>
+    </div>`;
+  const linkRows = document.getElementById('linkRows');
+  function bindRow(row){ row.querySelector('.lk-del').onclick = ()=> row.remove(); }
+  linkRows.querySelectorAll('.link-row').forEach(bindRow);
+  document.getElementById('addLink').onclick = ()=>{
+    linkRows.insertAdjacentHTML('beforeend', linkRowHtml('',''));
+    bindRow(linkRows.lastElementChild);
+  };
+  document.getElementById('cancel').onclick = closeModal;
+  document.getElementById('bd').onclick = e=>{ if(e.target.id === 'bd') closeModal(); };
+  document.getElementById('save').onclick = async ()=>{
+    const err = document.getElementById('fErr');
+    const type = document.getElementById('fType').value;
+    const title = document.getElementById('fTitle').value.trim();
+    const date = document.getElementById('fDate').value;
+    const bodyTxt = document.getElementById('fBody').value.trim();
+    if(!title){ err.textContent = '제목을 입력해주세요.'; err.style.display = 'block'; return; }
+    if(!date){ err.textContent = '날짜를 입력해주세요.'; err.style.display = 'block'; return; }
+    const links = [...linkRows.querySelectorAll('.link-row')].map(r=>{
+      let url = r.querySelector('.lk-url').value.trim();
+      if(url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+      return { label: r.querySelector('.lk-label').value.trim() || '링크', url };
+    }).filter(l => l.url);
+    const data = { type, title, date, body: bodyTxt, links };
+    const btn = document.getElementById('save');
+    btn.disabled = true;
+    try{
+      if(isEdit) await db.collection('posts').doc(post.id).set(data);
+      else await db.collection('posts').add(data);
+      closeModal();
+    }catch(e){
+      err.textContent = '저장 실패: ' + e.message; err.style.display = 'block'; btn.disabled = false;
+    }
+  };
+}
+
+async function doDelete(id){
+  const p = POSTS.find(x=>x.id===id);
+  if(!p) return;
+  if(!confirm(`"${p.title}" 소식을 삭제할까요?`)) return;
+  try{ await db.collection('posts').doc(id).delete(); }
+  catch(e){ alert('삭제 실패: ' + e.message); }
+}
+
+render();
+
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
