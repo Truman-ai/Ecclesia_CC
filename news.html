@@ -49,11 +49,10 @@
   .post-head .iconbtn.del{color:var(--danger)}
   .ptitle{font-size:16px;font-weight:700;letter-spacing:-.01em;line-height:1.4}
   .pbody{font-size:13.5px;color:var(--ink);opacity:.85;margin-top:6px;white-space:pre-wrap;line-height:1.65}
-  .pvideo{position:relative;width:100%;aspect-ratio:16/9;margin-top:12px;border-radius:12px;overflow:hidden;background:#000}
-  .pvideo iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
   .plinks{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
   .plink{font-size:12.5px;font-weight:700;color:var(--accent-ink);text-decoration:none;
     background:color-mix(in srgb, var(--accent) 14%, transparent);border-radius:10px;padding:7px 11px}
+  .plink.yt{color:#a5261c;background:color-mix(in srgb, #c0392b 13%, transparent)}
 
   .empty,.loading{padding:40px 18px;text-align:center;color:var(--muted);font-size:13px}
 
@@ -174,9 +173,7 @@ function postCard(p){
   const admin = currentUser ? `
     <button class="iconbtn edit" data-id="${p.id}" aria-label="수정">✎</button>
     <button class="iconbtn del" data-id="${p.id}" aria-label="삭제">✕</button>` : '';
-  const all = Array.isArray(p.links) ? p.links.filter(l=>l && l.url) : [];
-  const videos = [], others = [];
-  all.forEach(l=>{ const id = ytId(l.url); if(id) videos.push(id); else others.push(l); });
+  const links = Array.isArray(p.links) ? p.links.filter(l=>l && l.url) : [];
   return `
     <div class="post">
       <div class="post-head">
@@ -186,10 +183,10 @@ function postCard(p){
       </div>
       <div class="ptitle">${escapeHtml(p.title || '')}</div>
       ${p.body ? `<div class="pbody">${escapeHtml(p.body)}</div>` : ''}
-      ${videos.map(id=>`<div class="pvideo"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}" title="YouTube" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`).join('')}
-      ${others.length ? `<div class="plinks">${others.map(l=>
-        `<a class="plink" href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">↗ ${escapeHtml(l.label || '링크')}</a>`
-      ).join('')}</div>` : ''}
+      ${links.length ? `<div class="plinks">${links.map(l=>{
+        const yt = !!ytId(l.url);
+        return `<a class="plink${yt?' yt':''}" href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">${yt?'▶':'↗'} ${escapeHtml(l.label || (yt?'유튜브에서 보기':'링크'))}</a>`;
+      }).join('')}</div>` : ''}
     </div>`;
 }
 
@@ -238,7 +235,7 @@ function closeModal(){ const r = document.getElementById('modalRoot'); if(r) r.i
 function linkRowHtml(label, url){
   return `<div class="link-row">
     <input class="lk-label" type="text" placeholder="라벨" value="${escapeHtml(label||'')}">
-    <input class="lk-url" type="url" placeholder="https://... (유튜브 주소는 자동 재생)" value="${escapeHtml(url||'')}">
+    <input class="lk-url" type="url" placeholder="https://..." value="${escapeHtml(url||'')}">
     <button type="button" class="lk-del" aria-label="삭제">✕</button>
   </div>`;
 }
@@ -287,7 +284,7 @@ function openModal(mode, post){
         <div class="field"><label>링크 (선택)</label>
           <div id="linkRows">${rows}</div>
           <button type="button" class="link-add" id="addLink">+ 링크 추가</button>
-          <div class="hint">유튜브 주소를 넣으면 카드 안에서 바로 재생됩니다. 문서는 구글드라이브 공유 링크를 붙여넣으세요.</div>
+          <div class="hint">유튜브 주소를 넣으면 ▶ 버튼으로 표시되고, 누르면 유튜브 앱/사이트로 이동합니다. 문서는 구글드라이브 공유 링크를 붙여넣으세요.</div>
         </div>
         <div class="err" id="fErr" style="display:none"></div>
         <div class="btns">
