@@ -1,7 +1,7 @@
 {
-  "name": "에클레시아 춘천 찬송가",
-  "short_name": "춘천 찬송가",
-  "description": "에클레시아 춘천 찬송가 가사",
+  "name": "에클레시아 춘천",
+  "short_name": "에클레시아 춘천",
+  "description": "에클레시아 춘천 교회 앱 (찬송가·일정·소식·차트)",
   "lang": "ko",
   "start_url": "./index.html",
   "scope": "./",
