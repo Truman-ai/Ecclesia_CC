@@ -26,7 +26,7 @@
     --line:#2a2e37; --accent:#93b4ff; --refrain:#ff8a80;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%}
+  html,body{height:100%;touch-action:manipulation}
   body{
     background:var(--bg);color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
@@ -726,7 +726,7 @@ const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v===null? d : JSON.parse(v);}catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-let theme  = store.get('hj_theme', (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light'));
+let theme  = store.get('hj_theme', 'light');  // 기본 밝은 모드 (사용자가 바꾸면 그 선택을 저장)
 let scale  = store.get('hj_scale', 1);
 let pLight = store.get('hj_present_light', false);
 applyTheme(); applyScale();
