@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#faf9f7">
+<title>말씀 · 에클레시아 춘천</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="에클레시아 춘천">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#faf9f7; --surface:#ffffff; --ink:#1c1b19; --muted:#7a756c;
+    --line:#e7e3db; --accent:#1e3a8a; --danger:#c0392b;
+    --scale:1;
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  html[data-theme="dark"]{
+    --bg:#0f1115; --surface:#171a20; --ink:#e9e6e0; --muted:#9aa0aa;
+    --line:#2a2e37; --accent:#93b4ff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;touch-action:manipulation}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+    line-height:1.7;-webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:none;
+  }
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  input,textarea{font:inherit;color:inherit}
+  .app{max-width:640px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+
+  .bar{
+    position:sticky;top:0;z-index:10;background:var(--bg);
+    padding:calc(var(--safe-t) + 12px) 14px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;
+  }
+  .bar a.home{width:30px;height:30px;flex:none;display:block}
+  .bar a.home img{width:100%;height:100%;border-radius:8px;display:block}
+  .bar h1{font-size:18px;font-weight:700;letter-spacing:-.01em;flex:1;min-width:0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .iconbtn{
+    width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+    font-size:16px;flex:none;border:1px solid var(--line);background:var(--surface);
+  }
+  .bar .secretPair{flex:none;display:flex;gap:50px}
+  .bar .secretZone{flex:none;width:36px;height:36px}
+  .bar .adminTag{flex:none;font-size:12px;font-weight:700;color:#fff;background:var(--accent);
+    border-radius:999px;padding:6px 11px}
+
+  .search{padding:12px 14px 4px}
+  .search input{
+    width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);font-size:16px;outline:none;
+  }
+  .search input:focus{border-color:var(--accent)}
+  .seedNote{margin:10px 14px 0;padding:12px 14px;border:1px dashed var(--accent);border-radius:12px;
+    font-size:13px;color:var(--ink)}
+  .addBtn{margin:10px 14px 0;width:calc(100% - 28px);padding:12px;border-radius:12px;
+    border:1px solid var(--accent);color:var(--accent);font-weight:800;font-size:14px}
+  .list{padding:8px 14px calc(var(--safe-b) + 28px);list-style:none}
+  .item{
+    display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+    padding:15px 12px;border-bottom:1px solid var(--line);
+  }
+  .item:active{background:var(--surface)}
+  .item .ttl{flex:1;font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .item .cnt{font-size:12.5px;color:var(--muted);flex:none}
+  .empty,.loading{padding:60px 20px;text-align:center;color:var(--muted)}
+
+  .read{padding:22px 20px calc(var(--safe-b) + 120px);flex:1}
+  .read .head{margin-bottom:22px}
+  .read .head h2{font-size:calc(24px * var(--scale));font-weight:800;letter-spacing:-.02em}
+  .stanza{margin:0 0 22px}
+  .stanza .lbl{font-size:calc(12px * var(--scale));font-weight:700;color:var(--muted);margin-bottom:4px}
+  .stanza p{font-size:calc(17px * var(--scale));white-space:pre-line;letter-spacing:-.01em}
+  .admin-row{display:flex;gap:10px;margin:28px 0 6px}
+  .admin-row button{flex:1;padding:11px;border-radius:12px;border:1px solid var(--line);
+    background:var(--surface);font-weight:700;font-size:14px}
+  .admin-row button.del{color:var(--danger);border-color:var(--danger)}
+
+  .actions{
+    position:fixed;left:0;right:0;bottom:0;z-index:10;
+    max-width:640px;margin:0 auto;
+    padding:10px 14px calc(var(--safe-b) + 12px);
+    background:var(--bg);border-top:1px solid var(--line);
+    display:flex;gap:10px;align-items:center;
+  }
+  .actions .nav{
+    width:46px;height:46px;border-radius:12px;border:1px solid var(--line);
+    background:var(--surface);display:grid;place-items:center;font-size:18px;flex:none;
+  }
+  .actions .nav:disabled{opacity:.35}
+  .actions .present{
+    flex:1;height:46px;border-radius:12px;background:var(--accent);color:#fff;
+    font-size:16px;font-weight:700;display:grid;place-items:center;letter-spacing:.02em;
+  }
+  html[data-theme="dark"] .actions .present{color:#0f1115}
+
+  /* ---------- present view (찬송가 띄우기와 동일) ---------- */
+  .present-view{position:fixed;inset:0;z-index:100;background:#08090c;color:#f2efe9;display:flex;flex-direction:column}
+  .present-view.light{background:#fbfaf7;color:#1c1b19}
+  .present-view .pbar{display:flex;align-items:center;gap:12px;
+    padding:calc(var(--safe-t) + 10px) 16px 8px;font-size:13px;color:inherit;opacity:.75}
+  .present-view .pbar .mid{flex:1;text-align:center;font-variant-numeric:tabular-nums}
+  .present-view .pbar button{font-size:18px;opacity:.9}
+  .pstage{flex:1;display:grid;place-items:center;padding:16px 22px;text-align:center;position:relative;overflow:hidden}
+  .pstage .pcontent{max-width:100%}
+  .pstage p{
+    font-size:calc(clamp(22px,7.4vw,40px) * var(--scale));
+    font-weight:700;line-height:1.55;white-space:pre-line;letter-spacing:-.01em;word-break:keep-all;
+  }
+  .ptap{position:absolute;inset:0;display:flex}
+  .ptap span{flex:1}
+  .dots{display:flex;gap:6px;justify-content:center;padding:6px 0 calc(var(--safe-b) + 8px);flex-wrap:wrap}
+  .dots i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.25}
+  .dots i.on{opacity:.9}
+
+  /* ---------- 모달 ---------- */
+  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+  @media (min-width:560px){ .backdrop{align-items:center} }
+  .sheet{width:100%;max-width:520px;background:var(--surface);border-radius:22px 22px 0 0;
+    padding:22px 22px calc(var(--safe-b) + 22px);max-height:92vh;overflow:auto}
+  @media (min-width:560px){ .sheet{border-radius:22px} }
+  .sheet h2{font-size:17px;font-weight:800;margin-bottom:16px;letter-spacing:-.01em}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .field input,.field textarea{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:12px;
+    background:var(--bg);color:var(--ink);font-size:15px;font-family:inherit}
+  .field textarea{min-height:44vh;line-height:1.6;resize:vertical;white-space:pre}
+  .field input:focus,.field textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+  .field .hint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+  .err{font-size:12.5px;color:var(--danger);margin:-6px 0 12px;white-space:pre-wrap}
+  .btns{display:flex;gap:10px;margin-top:6px}
+  .btns button{flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:700}
+  .btn-cancel{background:var(--bg);border:1px solid var(--line);color:var(--ink)}
+  .btn-save{background:var(--ink);color:var(--bg)}
+  .btn-save:disabled{opacity:.5}
+
+  @media (min-width:641px){
+    body{padding:0}
+    .app{border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh}
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div id="modalRoot"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script>
+/* =========================================================================
+   말씀 — 관리자가 입력한 텍스트를 그대로 슬라이드로 표시. 찬송가 '띄우기'와 동일한 틀.
+   구조: { id, title, seq, slides:[ "구절 텍스트", ... ] }
+   ========================================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAlhXqaMgI3phBuH7LaFI339TrPLQaqCWA",
+  authDomain: "ecclesiacc-b33d8.firebaseapp.com",
+  projectId: "ecclesiacc-b33d8",
+  storageBucket: "ecclesiacc-b33d8.firebasestorage.app",
+  messagingSenderId: "958593730476",
+  appId: "1:958593730476:web:16cbcb1f9159027db3dc09"
+};
+const ADMIN_EMAIL = "admin@ecclesiacc-b33d8.firebaseapp.com";
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence().catch(()=>{});
+
+let WORDS = [], loaded = false, currentUser = null;
+
+function subscribeWords(){
+  db.collection('words').orderBy('seq').onSnapshot(snap=>{
+    WORDS = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    loaded = true; render();
+  }, err=>{
+    console.error(err); loaded = true; render();
+    setTimeout(subscribeWords, 4000);
+  });
+}
+subscribeWords();
+auth.onAuthStateChanged(u=>{ currentUser = u; closeModal(); render(); });
+async function doLogout(){ await auth.signOut(); }
+
+/* ---------- 숨긴 관리자 진입: A→B→A→B ---------- */
+const SECRET_SEQ = ['A','B','A','B'];
+let secretSeq = [], secretTimer = null;
+function secretTap(which){
+  clearTimeout(secretTimer);
+  secretTimer = setTimeout(()=>{ secretSeq = []; }, 2500);
+  secretSeq.push(which);
+  if(!secretSeq.every((v,i)=> v === SECRET_SEQ[i])){
+    secretSeq = (which === SECRET_SEQ[0]) ? [which] : [];
+    return;
+  }
+  if(secretSeq.length === SECRET_SEQ.length){
+    secretSeq = []; clearTimeout(secretTimer); openModal('login');
+  }
+}
+
+/* ---------- 설정 (localStorage) ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v===null? d : JSON.parse(v);}catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+let theme  = store.get('word_theme', 'light');
+let scale  = store.get('word_scale', 1);
+let pLight = store.get('word_present_light', false);
+applyTheme(); applyScale();
+function applyTheme(){ document.documentElement.dataset.theme = theme; }
+function applyScale(){ document.documentElement.style.setProperty('--scale', scale); }
+function clampScale(v){ return Math.min(1.8, Math.max(0.8, Math.round(v*100)/100)); }
+
+/* ---------- 텍스트 <-> 데이터 ---------- */
+function wordToText(w){ return [w.title, ...(w.slides||[])].join('\n\n'); }
+function textToWord(text){
+  const parts = text.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+  if(!parts.length) throw new Error('내용이 없습니다.');
+  const title = parts[0];
+  const slides = parts.slice(1);
+  if(!slides.length) throw new Error('제목 다음 줄을 비우고, 그 아래에 구절을 입력해주세요.');
+  return { title, slides };
+}
+
+/* ---------- 라우팅 ---------- */
+function parseHash(){
+  const h = location.hash.replace(/^#\/?/, '');
+  const parts = h.split('/').filter(Boolean);
+  if(parts[0] === 'w' && parts[1]){
+    return { view: parts[2]==='present' ? 'present' : 'read', id: parts[1] };
+  }
+  return { view:'list' };
+}
+function go(hash){ location.hash = hash; }
+window.addEventListener('hashchange', render);
+
+const app = document.getElementById('app');
+let searchTerm = '';
+
+function render(){
+  const r = parseHash();
+  releaseWakeLock();
+  if(r.view !== 'present') exitPresentChrome();
+  if(r.view === 'list') return renderList();
+  const w = WORDS.find(x => x.id === r.id);
+  if(!w){ go('#/'); return; }
+  if(r.view === 'read') return renderRead(w);
+  if(r.view === 'present') return renderPresent(w);
+}
+
+function renderList(){
+  const adminCtl = currentUser
+    ? `<button class="adminTag" id="adminBtn">관리자 모드</button>`
+    : `<span class="secretPair">
+         <button class="secretZone" id="secretB" aria-hidden="true" tabindex="-1"></button>
+         <button class="secretZone" id="secretA" aria-hidden="true" tabindex="-1"></button>
+       </span>`;
+  app.innerHTML = `
+    <div class="bar">
+      <a class="home" href="./index.html" aria-label="홈으로"><img src="./logo-mark.png" alt=""></a>
+      <h1>말씀</h1>
+      <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
+      ${adminCtl}
+    </div>
+    <div class="search">
+      <input id="q" type="search" inputmode="search" placeholder="제목으로 찾기" autocomplete="off" value="${escapeAttr(searchTerm)}">
+    </div>
+    ${currentUser ? `<button class="addBtn" id="addBtn">+ 새 말씀</button>` : ''}
+    <div id="listWrap"></div>
+  `;
+  const qi = document.getElementById('q');
+  qi.addEventListener('input', e=>{ searchTerm = e.target.value; renderListItems(); });
+  if(searchTerm){ qi.focus(); const v=qi.value; qi.value=''; qi.value=v; }
+  document.getElementById('themeBtn').onclick = ()=>{
+    theme = theme==='dark'?'light':'dark'; store.set('word_theme',theme); applyTheme();
+    document.getElementById('themeBtn').textContent = theme==='dark'?'☀️':'🌙';
+  };
+  if(currentUser){
+    document.getElementById('adminBtn').onclick = doLogout;
+    document.getElementById('addBtn').onclick = ()=> openModal('add');
+  } else {
+    document.getElementById('secretA').onclick = ()=> secretTap('A');
+    document.getElementById('secretB').onclick = ()=> secretTap('B');
+  }
+  renderListItems();
+}
+
+function renderListItems(){
+  const wrap = document.getElementById('listWrap');
+  if(!loaded){ wrap.innerHTML = `<div class="loading">불러오는 중…</div>`; return; }
+  const q = searchTerm.trim().toLowerCase();
+  const filtered = WORDS.filter(w => !q || (w.title||'').toLowerCase().includes(q));
+  wrap.innerHTML = filtered.length ? `<ul class="list">${filtered.map(w=>`
+      <li><button class="item" data-id="${w.id}">
+        <span class="ttl">${escapeHtml(w.title)}</span>
+        <span class="cnt">${(w.slides||[]).length}구절</span>
+      </button></li>`).join('')}</ul>`
+      : `<div class="empty">${WORDS.length ? '검색 결과가 없습니다' : '등록된 말씀이 없습니다'}</div>`;
+  wrap.querySelectorAll('.item').forEach(b=>{
+    b.onclick = ()=> go('#/w/'+b.dataset.id);
+  });
+}
+
+function renderRead(w){
+  const idx = WORDS.indexOf(w);
+  const prev = WORDS[idx-1], next = WORDS[idx+1];
+  app.innerHTML = `
+    <div class="bar">
+      <button class="iconbtn" id="backBtn" aria-label="목록으로">←</button>
+      <h1>${escapeHtml(w.title)}</h1>
+      <button class="iconbtn" id="minus" aria-label="글자 작게">가−</button>
+      <button class="iconbtn" id="plus" aria-label="글자 크게">가＋</button>
+      <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
+    </div>
+    <div class="read">
+      <div class="head"><h2>${escapeHtml(w.title)}</h2></div>
+      ${(w.slides||[]).map((s,i)=>`
+        <div class="stanza">
+          <div class="lbl">${i+1}</div>
+          <p>${escapeHtml(s)}</p>
+        </div>`).join('')}
+      ${currentUser ? `<div class="admin-row">
+        <button id="editWord">✎ 수정</button>
+        <button class="del" id="delWord">✕ 삭제</button>
+      </div>` : ''}
+    </div>
+    <div class="actions">
+      <button class="nav" id="navPrev" ${prev?'':'disabled'} aria-label="이전">‹</button>
+      <button class="present" id="presentBtn">▶  띄우기</button>
+      <button class="nav" id="navNext" ${next?'':'disabled'} aria-label="다음">›</button>
+    </div>
+  `;
+  document.getElementById('backBtn').onclick = ()=> go('#/');
+  document.getElementById('themeBtn').onclick = ()=>{
+    theme = theme==='dark'?'light':'dark'; store.set('word_theme',theme); applyTheme(); renderRead(w);
+  };
+  document.getElementById('minus').onclick = ()=>{ scale = clampScale(scale-0.1); store.set('word_scale',scale); applyScale(); };
+  document.getElementById('plus').onclick  = ()=>{ scale = clampScale(scale+0.1); store.set('word_scale',scale); applyScale(); };
+  document.getElementById('presentBtn').onclick = ()=> enterPresent(w.id);
+  if(prev) document.getElementById('navPrev').onclick = ()=> go('#/w/'+prev.id);
+  if(next) document.getElementById('navNext').onclick = ()=> go('#/w/'+next.id);
+  if(currentUser){
+    document.getElementById('editWord').onclick = ()=> openModal('edit', w);
+    document.getElementById('delWord').onclick = ()=> deleteWord(w);
+  }
+  window.scrollTo(0,0);
+}
+
+/* ---------- 띄우기 (찬송가와 동일) ---------- */
+function renderPresent(w){
+  const slides = w.slides || [];
+  let i = 0;
+  function draw(){
+    content.innerHTML = `<div class="pcontent"><p>${escapeHtml(slides[i])}</p></div>`;
+    mid.textContent = `${i+1}/${slides.length}`;
+    dots.innerHTML = slides.map((_,k)=>`<i class="${k===i?'on':''}"></i>`).join('');
+    fit();
+  }
+  function fit(){
+    const p = content.querySelector('p'); if(!p) return;
+    p.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(p).fontSize);
+    const avail = stage.clientHeight - 24;
+    let guard = 0;
+    while(content.scrollHeight > avail && size > 13 && guard++ < 60){
+      size -= 2; p.style.fontSize = size + 'px';
+    }
+  }
+  function move(d){ const ni = i+d; if(ni<0||ni>=slides.length) return; i=ni; draw(); }
+
+  app.innerHTML = `
+    <div class="present-view ${pLight?'light':''}" id="pv">
+      <div class="pbar">
+        <button id="pExit" aria-label="닫기">✕</button>
+        <div class="mid" id="pMid"></div>
+        <button id="pLight" aria-label="화면 밝기 전환">${pLight?'🌙':'☀️'}</button>
+      </div>
+      <div class="pstage" id="pStage">
+        <div id="pContent"></div>
+        <div class="ptap"><span data-d="-1"></span><span data-d="1"></span></div>
+      </div>
+      <div class="dots" id="pDots"></div>
+    </div>
+  `;
+  const pv = document.getElementById('pv');
+  const stage = document.getElementById('pStage');
+  const content = document.getElementById('pContent');
+  const mid = document.getElementById('pMid');
+  const dots = document.getElementById('pDots');
+  draw();
+
+  document.getElementById('pExit').onclick = ()=> go('#/w/'+w.id);
+  document.getElementById('pLight').onclick = ()=>{
+    pLight = !pLight; store.set('word_present_light', pLight);
+    pv.classList.toggle('light', pLight);
+    document.getElementById('pLight').textContent = pLight?'🌙':'☀️';
+  };
+  const tap = stage.querySelector('.ptap');
+  if(tap) tap.addEventListener('click', e=>{
+    const t = e.target.closest('span'); if(!t) return;
+    move(parseInt(t.dataset.d,10));
+  });
+
+  let sx=0, sy=0;
+  stage.addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY; }, {passive:true});
+  stage.addEventListener('touchend', e=>{
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = e.changedTouches[0].clientY - sy;
+    if(Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) move(dx < 0 ? 1 : -1);
+  }, {passive:true});
+
+  presentKeyHandler = e=>{
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); move(1); }
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp'){ e.preventDefault(); move(-1); }
+    else if(e.key==='Escape'){ go('#/w/'+w.id); }
+  };
+  window.addEventListener('keydown', presentKeyHandler);
+  presentResizeHandler = ()=> fit();
+  window.addEventListener('resize', presentResizeHandler);
+  window.addEventListener('orientationchange', presentResizeHandler);
+
+  requestWakeLock();
+}
+let presentKeyHandler = null;
+let presentResizeHandler = null;
+
+async function enterPresent(id){
+  try{
+    const el = document.documentElement;
+    if(!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
+  }catch(e){}
+  try{
+    if(screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+  }catch(e){}
+  go('#/w/'+id+'/present');
+}
+function exitPresentChrome(){
+  try{ if(screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
+  try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen(); }catch(e){}
+}
+
+let wakeLock = null;
+async function requestWakeLock(){
+  try{ if('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
+}
+function releaseWakeLock(){
+  if(presentKeyHandler){ window.removeEventListener('keydown', presentKeyHandler); presentKeyHandler = null; }
+  if(presentResizeHandler){ window.removeEventListener('resize', presentResizeHandler); window.removeEventListener('orientationchange', presentResizeHandler); presentResizeHandler = null; }
+  try{ wakeLock && wakeLock.release(); }catch(e){}
+  wakeLock = null;
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && parseHash().view === 'present') requestWakeLock();
+});
+
+/* ---------- 모달: 로그인 / 말씀 추가·수정 ---------- */
+function closeModal(){ const r = document.getElementById('modalRoot'); if(r) r.innerHTML = ''; }
+
+function openModal(mode, w){
+  const root = document.getElementById('modalRoot');
+  if(mode === 'login'){
+    root.innerHTML = `
+      <div class="backdrop" id="bd">
+        <div class="sheet">
+          <h2>관리자 로그인</h2>
+          <div class="field"><label>비밀번호</label><input id="fPw" type="password" autocomplete="current-password" autofocus></div>
+          <div class="err" id="fErr" style="display:none"></div>
+          <div class="btns">
+            <button class="btn-cancel" id="cancel">취소</button>
+            <button class="btn-save" id="save">로그인</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('cancel').onclick = closeModal;
+    document.getElementById('bd').onclick = e=>{ if(e.target.id === 'bd') closeModal(); };
+    const pw = document.getElementById('fPw');
+    pw.addEventListener('keydown', e=>{ if(e.key === 'Enter') document.getElementById('save').click(); });
+    document.getElementById('save').onclick = async ()=>{
+      const err = document.getElementById('fErr'), btn = document.getElementById('save');
+      btn.disabled = true;
+      try{ await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pw.value); }
+      catch(e){ err.textContent = `로그인 실패 (${e.code})`; err.style.display = 'block'; btn.disabled = false; }
+    };
+    return;
+  }
+
+  const isEdit = mode === 'edit';
+  const initial = isEdit ? wordToText(w) : '';
+  root.innerHTML = `
+    <div class="backdrop" id="bd">
+      <div class="sheet">
+        <h2>${isEdit ? '말씀 수정' : '새 말씀'}</h2>
+        <div class="field">
+          <label>내용 (첫 줄: 제목, 한 줄 띄우고 구절마다 한 줄 띄워 입력)</label>
+          <textarea id="fText" spellcheck="false" placeholder="믿음에 관한 말씀&#10;&#10;첫 번째 구절 텍스트&#10;&#10;두 번째 구절 텍스트">${escapeHtml(initial)}</textarea>
+          <div class="hint">구절 하나가 슬라이드 한 장이 됩니다. 구절 사이는 반드시 빈 줄로 구분해주세요.</div>
+        </div>
+        <div class="err" id="fErr" style="display:none"></div>
+        <div class="btns">
+          <button class="btn-cancel" id="cancel">취소</button>
+          <button class="btn-save" id="save">${isEdit ? '저장' : '추가'}</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('cancel').onclick = closeModal;
+  document.getElementById('bd').onclick = e=>{ if(e.target.id === 'bd') closeModal(); };
+  document.getElementById('save').onclick = async ()=>{
+    const err = document.getElementById('fErr');
+    const btn = document.getElementById('save');
+    let parsed;
+    try{ parsed = textToWord(document.getElementById('fText').value); }
+    catch(e){ err.textContent = e.message; err.style.display = 'block'; return; }
+    btn.disabled = true;
+    try{
+      if(isEdit){
+        await db.collection('words').doc(w.id).update({ title: parsed.title, slides: parsed.slides });
+      } else {
+        await db.collection('words').add({ title: parsed.title, slides: parsed.slides, seq: Date.now() });
+      }
+      closeModal();
+      go('#/');
+    }catch(e){
+      err.textContent = '저장 실패: ' + e.message; err.style.display = 'block'; btn.disabled = false;
+    }
+  };
+}
+
+async function deleteWord(w){
+  if(!confirm(`"${w.title}"을(를) 삭제할까요?`)) return;
+  try{ await db.collection('words').doc(w.id).delete(); go('#/'); }
+  catch(e){ alert('삭제 실패: ' + e.message); }
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s).replace(/'/g,'&#39;'); }
+
+render();
+
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
