@@ -108,6 +108,10 @@
     font-size:16px;font-weight:700;display:grid;place-items:center;letter-spacing:.02em;
   }
   html[data-theme="dark"] .actions .present{color:#0f1115}
+  .actions .audio{
+    flex:1;height:46px;border-radius:12px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);
+    font-size:16px;font-weight:700;display:grid;place-items:center;letter-spacing:.02em;
+  }
 
   /* ---------- present view ---------- */
   .present-view{
@@ -607,7 +611,9 @@ function secretTap(which){
 
 /* ---------- 찬송 <-> 텍스트 변환 ---------- */
 function hymnToText(h){
-  let out = `${h.n}장. ${h.title}${h.ref ? ` (${h.ref})` : ''}\n\n`;
+  let out = `${h.n}장. ${h.title}${h.ref ? ` (${h.ref})` : ''}\n`;
+  if(h.audio) out += `음원: ${h.audio}\n`;
+  out += `\n`;
   h.blocks.forEach(b=>{
     const lines = (b.text || '').split('\n');
     if(b.type === 'refrain'){
@@ -635,6 +641,14 @@ function textToHymn(text){
   const n = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : m[1];
   const title = m[2].trim();
   const ref = m[3] ? m[3].trim() : null;
+  let audio = null;
+  for(let i=bodyStart;i<lines.length;i++){
+    const s = lines[i].trim();
+    if(!s) continue;
+    const am = s.match(/^음원\s*:\s*(\S+)/);
+    if(am){ audio = am[1]; bodyStart = i+1; }
+    break;
+  }
   const blocks = [];
   let cur = null;
   for(let i=bodyStart;i<lines.length;i++){
@@ -657,7 +671,7 @@ function textToHymn(text){
   }
   if(!blocks.length) throw new Error('가사 내용이 없습니다.');
   if(blocks.length === 1 && blocks[0].type === 'verse') blocks[0].label = '';
-  return { n, title, ref, blocks };
+  return { n, title, ref, audio, blocks };
 }
 
 /* ---------- 모달: 로그인 / 찬송 추가·수정 ---------- */
@@ -701,7 +715,7 @@ function openModal(mode, hymn){
         <div class="field">
           <label>가사 (첫 줄: "번호장. 제목", 절은 "1.", 후렴은 [후렴])</label>
           <textarea id="fText" spellcheck="false" placeholder="27장. 주님께 영광&#10;&#10;1. 주님께 영광 다시 사신 주&#10; 흰 옷 입은 천사 돌을 옮겼고&#10;2. 부활의 주님 나타나시사&#10;[후렴]&#10; 주님께 영광 다시 사신 주">${escapeHtml(initial)}</textarea>
-          <div class="hint">이어지는 줄은 맨 앞에 칸(스페이스) 한 칸. 성구는 첫 줄 끝에 (사 66:23)처럼.</div>
+          <div class="hint">이어지는 줄은 맨 앞에 칸(스페이스) 한 칸. 성구는 첫 줄 끝에 (사 66:23)처럼. 음원 링크는 둘째 줄에 "음원: URL" (선택, 없으면 생략).</div>
         </div>
         <div class="err" id="fErr" style="display:none"></div>
         <div class="btns">
@@ -881,6 +895,7 @@ function renderRead(h){
     <div class="actions">
       <button class="nav" id="navPrev" ${prev?'':'disabled'} aria-label="이전 찬송">‹</button>
       <button class="present" id="presentBtn">▶  띄우기</button>
+      ${h.audio ? `<button class="audio" id="audioBtn">♪  음원듣기</button>` : ''}
       <button class="nav" id="navNext" ${next?'':'disabled'} aria-label="다음 찬송">›</button>
     </div>
   `;
@@ -895,6 +910,7 @@ function renderRead(h){
   document.getElementById('minus').onclick = ()=>{ scale = clampScale(scale-0.1); store.set('hj_scale',scale); applyScale(); };
   document.getElementById('plus').onclick  = ()=>{ scale = clampScale(scale+0.1); store.set('hj_scale',scale); applyScale(); };
   document.getElementById('presentBtn').onclick = ()=> enterPresent(h.n);
+  if(h.audio) document.getElementById('audioBtn').onclick = ()=> window.open(h.audio, '_blank', 'noopener,noreferrer');
   if(prev) document.getElementById('navPrev').onclick = ()=> go('#/h/'+prev.n);
   if(next) document.getElementById('navNext').onclick = ()=> go('#/h/'+next.n);
   window.scrollTo(0,0);
