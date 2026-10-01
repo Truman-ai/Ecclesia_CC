@@ -76,6 +76,7 @@
 
   /* ---------- read view ---------- */
   .read{padding:22px 20px calc(var(--safe-b) + 120px);flex:1}
+  .read.audio-open{padding-bottom:calc(var(--safe-b) + 220px)}
   .read .head{margin-bottom:22px}
   .read .head .kicker{font-size:14px;color:var(--accent);font-weight:700}
   .read .head h2{font-size:calc(24px * var(--scale));font-weight:800;letter-spacing:-.02em;margin-top:2px}
@@ -111,6 +112,19 @@
   .actions .audio{
     flex:1;height:46px;border-radius:12px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);
     font-size:16px;font-weight:700;display:grid;place-items:center;letter-spacing:.02em;
+  }
+  .audioDock{
+    position:fixed;left:0;right:0;z-index:10;bottom:calc(68px + var(--safe-b));
+    max-width:640px;margin:0 auto;padding:10px 14px;
+    background:var(--bg);border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;
+  }
+  .audioDock .pvideo{flex:1;aspect-ratio:16/9;max-height:150px;border-radius:10px;overflow:hidden;background:#000;position:relative}
+  .audioDock .pvideo iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .audioDock audio{flex:1;height:36px;min-width:0}
+  .audioDock .closeAudio{
+    flex:none;width:36px;height:36px;border-radius:10px;background:var(--surface);
+    border:1px solid var(--line);display:grid;place-items:center;font-size:15px;color:var(--muted);
   }
 
   /* ---------- present view ---------- */
@@ -783,6 +797,7 @@ window.addEventListener('hashchange', render);
 /* ---------- 렌더 ---------- */
 const app = document.getElementById('app');
 let searchTerm = '';
+let audioOpenFor = null;
 
 function render(){
   const r = parseHash();
@@ -868,6 +883,8 @@ function renderListItems(){
 function renderRead(h){
   const idx = HYMNS.indexOf(h);
   const prev = HYMNS[idx-1], next = HYMNS[idx+1];
+  const audioOpen = h.audio && audioOpenFor === h.n;
+  const audioYt = audioOpen ? ytId(h.audio) : null;
   app.innerHTML = `
     <div class="bar">
       <button class="iconbtn" id="backBtn" aria-label="목록으로">←</button>
@@ -876,7 +893,7 @@ function renderRead(h){
       <button class="iconbtn" id="plus" aria-label="글자 크게">가＋</button>
       <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
     </div>
-    <div class="read">
+    <div class="read ${audioOpen ? 'audio-open' : ''}">
       <div class="head">
         <div class="kicker">${h.n}장</div>
         <h2>${escapeHtml(h.title)}</h2>
@@ -892,14 +909,21 @@ function renderRead(h){
         <button class="del" id="delHymn">✕ 삭제</button>
       </div>` : ''}
     </div>
+    ${audioOpen ? `
+    <div class="audioDock">
+      ${audioYt
+        ? `<div class="pvideo"><iframe src="https://www.youtube-nocookie.com/embed/${audioYt}?autoplay=1&playsinline=1" title="음원" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>`
+        : `<audio controls autoplay src="${escapeHtml(h.audio)}"></audio>`}
+      <button class="closeAudio" id="closeAudioBtn" aria-label="음원 닫기">✕</button>
+    </div>` : ''}
     <div class="actions">
       <button class="nav" id="navPrev" ${prev?'':'disabled'} aria-label="이전 찬송">‹</button>
       <button class="present" id="presentBtn">▶  띄우기</button>
-      ${h.audio ? `<button class="audio" id="audioBtn">♪  음원듣기</button>` : ''}
+      ${h.audio ? `<button class="audio" id="audioBtn">${audioOpen ? '■  정지' : '♪  음원듣기'}</button>` : ''}
       <button class="nav" id="navNext" ${next?'':'disabled'} aria-label="다음 찬송">›</button>
     </div>
   `;
-  document.getElementById('backBtn').onclick = ()=> go('#/');
+  document.getElementById('backBtn').onclick = ()=>{ audioOpenFor = null; go('#/'); };
   if(currentUser){
     document.getElementById('editHymn').onclick = ()=> openModal('edit', h);
     document.getElementById('delHymn').onclick = ()=> deleteHymn(h);
@@ -910,9 +934,13 @@ function renderRead(h){
   document.getElementById('minus').onclick = ()=>{ scale = clampScale(scale-0.1); store.set('hj_scale',scale); applyScale(); };
   document.getElementById('plus').onclick  = ()=>{ scale = clampScale(scale+0.1); store.set('hj_scale',scale); applyScale(); };
   document.getElementById('presentBtn').onclick = ()=> enterPresent(h.n);
-  if(h.audio) document.getElementById('audioBtn').onclick = ()=> window.open(h.audio, '_blank', 'noopener,noreferrer');
-  if(prev) document.getElementById('navPrev').onclick = ()=> go('#/h/'+prev.n);
-  if(next) document.getElementById('navNext').onclick = ()=> go('#/h/'+next.n);
+  if(h.audio) document.getElementById('audioBtn').onclick = ()=>{
+    audioOpenFor = audioOpen ? null : h.n;
+    renderRead(h);
+  };
+  if(audioOpen) document.getElementById('closeAudioBtn').onclick = ()=>{ audioOpenFor = null; renderRead(h); };
+  if(prev) document.getElementById('navPrev').onclick = ()=>{ audioOpenFor = null; go('#/h/'+prev.n); };
+  if(next) document.getElementById('navNext').onclick = ()=>{ audioOpenFor = null; go('#/h/'+next.n); };
   window.scrollTo(0,0);
 }
 
@@ -1040,6 +1068,20 @@ document.addEventListener('visibilitychange', ()=>{
 
 /* ---------- util ---------- */
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function ytId(url){
+  if(!url) return null;
+  try{
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./,'');
+    if(host === 'youtu.be') return u.pathname.slice(1).split('/')[0] || null;
+    if(host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com'){
+      if(u.pathname === '/watch') return u.searchParams.get('v');
+      const m = u.pathname.match(/^\/(embed|live|shorts|v)\/([^/?#]+)/);
+      if(m) return m[2];
+    }
+  }catch(e){}
+  return null;
+}
 function escapeAttr(s){ return escapeHtml(s).replace(/'/g,'&#39;'); }
 
 /* ---------- 서비스 워커 등록 (http/https 에서만; file:// 로 열면 건너뜀) ---------- */
