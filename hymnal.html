@@ -574,14 +574,30 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 db.enablePersistence().catch(()=>{});
 
-let HYMNS = HYMNS_SEED.slice();  // Firestore 데이터 도착 전엔 예비 데이터 사용
+// 번호 끝의 숫자로 오름차순 정렬 (1,2,3... / FV19,FV77,FV213처럼 접두사+숫자도 숫자 기준으로)
+function hymnSortKey(n){
+  const s = String(n);
+  const m = s.match(/(\d+)$/);
+  const num = m ? parseInt(m[1], 10) : 0;
+  const prefix = m ? s.slice(0, s.length - m[1].length) : s;
+  return [prefix, num];
+}
+function sortHymns(arr){
+  return arr.slice().sort((a,b)=>{
+    const ka = hymnSortKey(a.n), kb = hymnSortKey(b.n);
+    if(ka[0] !== kb[0]) return ka[0] < kb[0] ? -1 : 1;
+    return ka[1] - kb[1];
+  });
+}
+
+let HYMNS = sortHymns(HYMNS_SEED);  // Firestore 데이터 도착 전엔 예비 데이터 사용
 let currentUser = null;
 let hymnsEmpty = false;          // Firestore hymns 컬렉션이 비었는지 (시드 안내용)
 
 function subscribeHymns(){
   db.collection('hymns').orderBy('n').onSnapshot(snap=>{
     hymnsEmpty = snap.empty;
-    if(!snap.empty) HYMNS = snap.docs.map(d => d.data());
+    if(!snap.empty) HYMNS = sortHymns(snap.docs.map(d => d.data()));
     render();
   }, err=>{
     console.error(err);
@@ -628,9 +644,14 @@ function hymnToText(h){
   let out = `${h.n}장. ${h.title}${h.ref ? ` (${h.ref})` : ''}\n`;
   if(h.audio) out += `음원: ${h.audio}\n`;
   out += `\n`;
-  h.blocks.forEach(b=>{
+  h.blocks.forEach((b,idx)=>{
     const lines = (b.text || '').split('\n');
-    if(b.type === 'refrain'){
+    const prev = h.blocks[idx-1];
+    const isSplit = !b.label && prev && prev.type === b.type;
+    if(isSplit){
+      out += `\n`;
+      lines.forEach(l => out += ` ${l}\n`);
+    } else if(b.type === 'refrain'){
       out += `[후렴]\n`;
       lines.forEach(l => out += ` ${l}\n`);
     } else {
@@ -665,17 +686,28 @@ function textToHymn(text){
   }
   const blocks = [];
   let cur = null;
+  let pendingSplit = false;
   for(let i=bodyStart;i<lines.length;i++){
     const raw = lines[i];
     const s = raw.trim();
-    if(!s || s.startsWith('#')) continue;
+    if(!s){
+      if(cur) pendingSplit = true;
+      continue;
+    }
+    if(s.startsWith('#')) continue;
     const mv = s.match(/^(\d+)\.\s*(.*)$/);
     if(s === '[후렴]'){
       cur = { type:'refrain', label:'후렴', text:'' };
       blocks.push(cur);
+      pendingSplit = false;
     } else if(mv){
       cur = { type:'verse', label:`${mv[1]}절`, text: mv[2].trim() };
       blocks.push(cur);
+      pendingSplit = false;
+    } else if(cur && pendingSplit){
+      cur = { type: cur.type, label:'', text: s };
+      blocks.push(cur);
+      pendingSplit = false;
     } else if(cur){
       cur.text = (cur.text ? cur.text + '\n' : '') + s;
     } else {
@@ -729,7 +761,7 @@ function openModal(mode, hymn){
         <div class="field">
           <label>가사 (첫 줄: "번호장. 제목", 절은 "1.", 후렴은 [후렴])</label>
           <textarea id="fText" spellcheck="false" placeholder="27장. 주님께 영광&#10;&#10;1. 주님께 영광 다시 사신 주&#10; 흰 옷 입은 천사 돌을 옮겼고&#10;2. 부활의 주님 나타나시사&#10;[후렴]&#10; 주님께 영광 다시 사신 주">${escapeHtml(initial)}</textarea>
-          <div class="hint">이어지는 줄은 맨 앞에 칸(스페이스) 한 칸. 성구는 첫 줄 끝에 (사 66:23)처럼. 음원 링크는 둘째 줄에 "음원: URL" (선택, 없으면 생략).</div>
+          <div class="hint">이어지는 줄은 맨 앞에 칸(스페이스) 한 칸. 성구는 첫 줄 끝에 (사 66:23)처럼. 음원 링크는 둘째 줄에 "음원: URL" (선택, 없으면 생략). 한 절이 너무 길어 띄우기에서 작게 보이면, 나누고 싶은 지점에 빈 줄을 넣으면 그 뒤부터 다음 슬라이드로 나뉩니다.</div>
         </div>
         <div class="err" id="fErr" style="display:none"></div>
         <div class="btns">
