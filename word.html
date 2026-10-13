@@ -74,6 +74,35 @@
   .item .ttl{flex:1;font-size:17px;font-weight:600;letter-spacing:-.01em}
   .item .cnt{font-size:12.5px;color:var(--muted);flex:none}
   .empty,.loading{padding:60px 20px;text-align:center;color:var(--muted)}
+  .secLbl{padding:18px 26px 0;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+  .secLbl + .list{padding-bottom:4px}
+  .item .ico{flex:none;font-size:18px}
+
+  /* ---------- 집회 녹음 ---------- */
+  .sessions{list-style:none;margin-top:4px}
+  .session{display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+    padding:15px 4px;border-bottom:1px solid var(--line)}
+  .session.on .no{background:var(--accent);color:#fff}
+  html[data-theme="dark"] .session.on .no{color:#0f1115}
+  .read.audio-open{padding-bottom:calc(var(--safe-b) + 220px)}
+  .audioDock{
+    position:fixed;left:0;right:0;z-index:10;bottom:0;
+    max-width:640px;margin:0 auto;padding:10px 14px calc(var(--safe-b) + 12px);
+    background:var(--bg);border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;
+  }
+  .audioDock .pvideo{flex:1;aspect-ratio:16/9;max-height:150px;border-radius:10px;overflow:hidden;background:#000;position:relative}
+  .audioDock .pvideo iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .audioDock audio{flex:1;height:36px;min-width:0}
+  .audioDock .closeAudio{
+    flex:none;width:36px;height:36px;border-radius:10px;background:var(--surface);
+    border:1px solid var(--line);display:grid;place-items:center;font-size:15px;color:var(--muted);
+  }
+  .session:active{background:var(--surface)}
+  .session .no{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+    font-size:13px;font-weight:800;color:var(--accent);border:1px solid var(--accent)}
+  .session .ttl{flex:1;min-width:0;font-size:calc(17px * var(--scale));font-weight:600;letter-spacing:-.01em}
+  .session .play{flex:none;font-size:13px;font-weight:700;color:var(--accent);white-space:nowrap}
 
   .read{padding:22px 20px calc(var(--safe-b) + 120px);flex:1}
   .read .head{margin-bottom:22px}
@@ -161,6 +190,7 @@
 /* =========================================================================
    말씀 — 관리자가 입력한 텍스트를 그대로 슬라이드로 표시. 찬송가 '띄우기'와 동일한 틀.
    구조: { id, title, seq, slides:[ "구절 텍스트", ... ] }
+   집회 녹음도 같은 컬렉션에 저장: { id, kind:'audio', title, seq, sessions:[ {title, url}, ... ] }
    ========================================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyAlhXqaMgI3phBuH7LaFI339TrPLQaqCWA",
@@ -230,6 +260,28 @@ function textToWord(text){
   if(!slides.length) throw new Error('제목 다음 줄을 비우고, 그 아래에 구절을 입력해주세요.');
   return { title, slides };
 }
+const isAudio = w => w.kind === 'audio';
+const textWords = () => WORDS.filter(w => !isAudio(w));
+const audioWords = () => WORDS.filter(isAudio).sort((a,b)=> b.seq - a.seq);
+
+/* 녹음: 첫 블록 = 모임 제목, 이후 블록마다 '세션 제목' 줄 + 링크 줄 */
+function audioToText(w){
+  return [w.title, ...(w.sessions||[]).map(s => `${s.title}\n${s.url}`)].join('\n\n');
+}
+function textToAudio(text){
+  const parts = text.split(/\n\s*\n/).map(s=>s.trim()).filter(Boolean);
+  if(!parts.length) throw new Error('내용이 없습니다.');
+  const title = parts[0];
+  const sessions = parts.slice(1).map((block, i)=>{
+    const lines = block.split('\n').map(s=>s.trim()).filter(Boolean);
+    const url = lines.find(l => /^https?:\/\/\S+$/i.test(l));
+    if(!url) throw new Error(`${i+1}번째 세션에 http(s) 링크가 없습니다.`);
+    const t = lines.filter(l => l !== url).join(' ') || `${i+1}세션`;
+    return { title: t, url };
+  });
+  if(!sessions.length) throw new Error('제목 다음 줄을 비우고, 그 아래에 세션 제목과 링크를 입력해주세요.');
+  return { title, sessions };
+}
 
 /* ---------- 라우팅 ---------- */
 function parseHash(){
@@ -238,6 +290,7 @@ function parseHash(){
   if(parts[0] === 'w' && parts[1]){
     return { view: parts[2]==='present' ? 'present' : 'read', id: parts[1] };
   }
+  if(parts[0] === 'r' && parts[1]) return { view:'audio', id: parts[1] };
   return { view:'list' };
 }
 function go(hash){ location.hash = hash; }
@@ -250,9 +303,14 @@ function render(){
   const r = parseHash();
   releaseWakeLock();
   if(r.view !== 'present') exitPresentChrome();
-  if(r.view === 'list') return renderList();
+  if(r.view === 'list'){ playing = null; delete app.dataset.audioId; return renderList(); }
   const w = WORDS.find(x => x.id === r.id);
-  if(!w){ go('#/'); return; }
+  if(!w){
+    if(loaded) go('#/'); else app.innerHTML = `<div class="loading">불러오는 중…</div>`;
+    return;
+  }
+  if(r.view === 'audio' || isAudio(w)) return renderAudio(w);
+  playing = null; delete app.dataset.audioId;
   if(r.view === 'read') return renderRead(w);
   if(r.view === 'present') return renderPresent(w);
 }
@@ -268,13 +326,14 @@ function renderList(){
     <div class="bar">
       <a class="home" href="./index.html" aria-label="홈으로"><img src="./logo-mark.png" alt=""></a>
       <h1>말씀</h1>
-      <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
       ${adminCtl}
+      <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
     </div>
     <div class="search">
       <input id="q" type="search" inputmode="search" placeholder="제목으로 찾기" autocomplete="off" value="${escapeAttr(searchTerm)}">
     </div>
-    ${currentUser ? `<button class="addBtn" id="addBtn">+ 새 말씀</button>` : ''}
+    ${currentUser ? `<button class="addBtn" id="addBtn">+ 새 말씀</button>
+      <button class="addBtn" id="addAudioBtn">+ 새 집회 녹음</button>` : ''}
     <div id="listWrap"></div>
   `;
   const qi = document.getElementById('q');
@@ -287,6 +346,7 @@ function renderList(){
   if(currentUser){
     document.getElementById('adminBtn').onclick = doLogout;
     document.getElementById('addBtn').onclick = ()=> openModal('add');
+    document.getElementById('addAudioBtn').onclick = ()=> openModal('addAudio');
   } else {
     document.getElementById('secretA').onclick = ()=> secretTap('A');
     document.getElementById('secretB').onclick = ()=> secretTap('B');
@@ -298,21 +358,95 @@ function renderListItems(){
   const wrap = document.getElementById('listWrap');
   if(!loaded){ wrap.innerHTML = `<div class="loading">불러오는 중…</div>`; return; }
   const q = searchTerm.trim().toLowerCase();
-  const filtered = WORDS.filter(w => !q || (w.title||'').toLowerCase().includes(q));
-  wrap.innerHTML = filtered.length ? `<ul class="list">${filtered.map(w=>`
-      <li><button class="item" data-id="${w.id}">
+  const match = w => !q || (w.title||'').toLowerCase().includes(q);
+  const audios = audioWords().filter(match);
+  const texts = textWords().filter(match);
+  const audioHtml = audios.length ? `
+    <div class="secLbl">집회 녹음</div>
+    <ul class="list">${audios.map(w=>`
+      <li><button class="item" data-href="#/r/${w.id}">
+        <span class="ico" aria-hidden="true">🎧</span>
+        <span class="ttl">${escapeHtml(w.title)}</span>
+        <span class="cnt">${(w.sessions||[]).length}세션</span>
+      </button></li>`).join('')}</ul>` : '';
+  const textHtml = texts.length ? `
+    ${audios.length ? `<div class="secLbl">말씀</div>` : ''}
+    <ul class="list">${texts.map(w=>`
+      <li><button class="item" data-href="#/w/${w.id}">
         <span class="ttl">${escapeHtml(w.title)}</span>
         <span class="cnt">${(w.slides||[]).length}구절</span>
-      </button></li>`).join('')}</ul>`
-      : `<div class="empty">${WORDS.length ? '검색 결과가 없습니다' : '등록된 말씀이 없습니다'}</div>`;
+      </button></li>`).join('')}</ul>` : '';
+  wrap.innerHTML = (audioHtml + textHtml)
+    || `<div class="empty">${WORDS.length ? '검색 결과가 없습니다' : '등록된 말씀이 없습니다'}</div>`;
   wrap.querySelectorAll('.item').forEach(b=>{
-    b.onclick = ()=> go('#/w/'+b.dataset.id);
+    b.onclick = ()=> go(b.dataset.href);
   });
 }
 
+/* 재생 중인 세션: { id, i } — 찬송가 '음원듣기'와 같은 하단 플레이어 */
+let playing = null;
+function playerHtml(url){
+  const yt = ytId(url);
+  if(yt) return `<div class="pvideo"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(yt)}?autoplay=1&playsinline=1${ytStart(url)}" title="집회 녹음" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>`;
+  const gd = driveId(url);
+  if(gd) return `<div class="pvideo"><iframe src="https://drive.google.com/file/d/${encodeURIComponent(gd)}/preview" title="집회 녹음" allow="autoplay"></iframe></div>`;
+  return `<audio controls autoplay src="${escapeAttr(safeUrl(url))}"></audio>`;
+}
+
+function renderAudio(w){
+  const keepY = app.dataset.audioId === w.id ? window.scrollY : 0;
+  const sessions = w.sessions || [];
+  const cur = playing && playing.id === w.id ? sessions[playing.i] : null;
+  app.innerHTML = `
+    <div class="bar">
+      <button class="iconbtn" id="backBtn" aria-label="목록으로">←</button>
+      <h1>${escapeHtml(w.title)}</h1>
+      <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
+    </div>
+    <div class="read ${cur ? 'audio-open' : ''}">
+      <div class="head"><h2>${escapeHtml(w.title)}</h2></div>
+      <ul class="sessions">${sessions.map((s,i)=>{ const on = cur && playing.i === i; return `
+        <li><button class="session ${on?'on':''}" data-i="${i}">
+          <span class="no">${i+1}</span>
+          <span class="ttl">${escapeHtml(s.title)}</span>
+          <span class="play">${on ? '■ 정지' : '▶ 듣기'}</span>
+        </button></li>`; }).join('')}</ul>
+      ${currentUser ? `<div class="admin-row">
+        <button id="editWord">✎ 수정</button>
+        <button class="del" id="delWord">✕ 삭제</button>
+      </div>` : ''}
+    </div>
+    ${cur ? `
+    <div class="audioDock">
+      ${playerHtml(cur.url)}
+      <button class="closeAudio" id="closeAudioBtn" aria-label="플레이어 닫기">✕</button>
+    </div>` : ''}
+  `;
+  app.querySelectorAll('.session').forEach(b=>{
+    b.onclick = ()=>{
+      const i = +b.dataset.i;
+      playing = (cur && playing.i === i) ? null : { id: w.id, i };
+      renderAudio(w);
+    };
+  });
+  if(cur) document.getElementById('closeAudioBtn').onclick = ()=>{ playing = null; renderAudio(w); };
+  document.getElementById('backBtn').onclick = ()=>{ playing = null; go('#/'); };
+  document.getElementById('themeBtn').onclick = ()=>{
+    theme = theme==='dark'?'light':'dark'; store.set('word_theme',theme); applyTheme(); renderAudio(w);
+  };
+  if(currentUser){
+    document.getElementById('editWord').onclick = ()=> openModal('editAudio', w);
+    document.getElementById('delWord').onclick = ()=> deleteWord(w);
+  }
+  app.dataset.audioId = w.id;
+  window.scrollTo(0, keepY);
+}
+function safeUrl(u){ return /^https?:\/\//i.test(u||'') ? u : '#'; }
+
 function renderRead(w){
-  const idx = WORDS.indexOf(w);
-  const prev = WORDS[idx-1], next = WORDS[idx+1];
+  const list = textWords();
+  const idx = list.indexOf(w);
+  const prev = list[idx-1], next = list[idx+1];
   app.innerHTML = `
     <div class="bar">
       <button class="iconbtn" id="backBtn" aria-label="목록으로">←</button>
@@ -493,17 +627,25 @@ function openModal(mode, w){
     return;
   }
 
-  const isEdit = mode === 'edit';
-  const initial = isEdit ? wordToText(w) : '';
-  root.innerHTML = `
-    <div class="backdrop" id="bd">
-      <div class="sheet">
-        <h2>${isEdit ? '말씀 수정' : '새 말씀'}</h2>
+  const audio = mode === 'addAudio' || mode === 'editAudio';
+  const isEdit = mode === 'edit' || mode === 'editAudio';
+  const initial = isEdit ? (audio ? audioToText(w) : wordToText(w)) : '';
+  const fieldHtml = audio ? `
+        <div class="field">
+          <label>내용 (첫 줄: 모임 제목, 한 줄 띄우고 세션마다 '제목 줄 + 링크 줄')</label>
+          <textarea id="fText" spellcheck="false" placeholder="2026년 10월 모임&#10;&#10;1세션 · 말씀 제목&#10;https://youtu.be/...&#10;&#10;2세션 · 말씀 제목&#10;https://youtu.be/...">${escapeHtml(initial)}</textarea>
+          <div class="hint">세션 사이는 반드시 빈 줄로 구분해주세요. 링크는 http:// 또는 https:// 로 시작해야 합니다.</div>
+        </div>` : `
         <div class="field">
           <label>내용 (첫 줄: 제목, 한 줄 띄우고 구절마다 한 줄 띄워 입력)</label>
           <textarea id="fText" spellcheck="false" placeholder="믿음에 관한 말씀&#10;&#10;첫 번째 구절 텍스트&#10;&#10;두 번째 구절 텍스트">${escapeHtml(initial)}</textarea>
           <div class="hint">구절 하나가 슬라이드 한 장이 됩니다. 구절 사이는 반드시 빈 줄로 구분해주세요.</div>
-        </div>
+        </div>`;
+  root.innerHTML = `
+    <div class="backdrop" id="bd">
+      <div class="sheet">
+        <h2>${audio ? (isEdit ? '집회 녹음 수정' : '새 집회 녹음') : (isEdit ? '말씀 수정' : '새 말씀')}</h2>
+        ${fieldHtml}
         <div class="err" id="fErr" style="display:none"></div>
         <div class="btns">
           <button class="btn-cancel" id="cancel">취소</button>
@@ -517,17 +659,17 @@ function openModal(mode, w){
     const err = document.getElementById('fErr');
     const btn = document.getElementById('save');
     let parsed;
-    try{ parsed = textToWord(document.getElementById('fText').value); }
+    try{ parsed = (audio ? textToAudio : textToWord)(document.getElementById('fText').value); }
     catch(e){ err.textContent = e.message; err.style.display = 'block'; return; }
     btn.disabled = true;
     try{
       if(isEdit){
-        await db.collection('words').doc(w.id).update({ title: parsed.title, slides: parsed.slides });
+        await db.collection('words').doc(w.id).update(parsed);
       } else {
-        await db.collection('words').add({ title: parsed.title, slides: parsed.slides, seq: Date.now() });
+        await db.collection('words').add({ ...parsed, ...(audio ? {kind:'audio'} : {}), seq: Date.now() });
       }
       closeModal();
-      go('#/');
+      if(audio && isEdit) render(); else go('#/');
     }catch(e){
       err.textContent = '저장 실패: ' + e.message; err.style.display = 'block'; btn.disabled = false;
     }
@@ -542,6 +684,37 @@ async function deleteWord(w){
 
 function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function escapeAttr(s){ return escapeHtml(s).replace(/'/g,'&#39;'); }
+function ytId(url){
+  if(!url) return null;
+  try{
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./,'');
+    if(host === 'youtu.be') return u.pathname.slice(1).split('/')[0] || null;
+    if(host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com'){
+      if(u.pathname === '/watch') return u.searchParams.get('v');
+      const m = u.pathname.match(/^\/(embed|live|shorts|v)\/([^/?#]+)/);
+      if(m) return m[2];
+    }
+  }catch(e){}
+  return null;
+}
+/* 유튜브 링크의 시작 시간(?t=90, ?t=1h2m3s)을 embed 의 &start= 로 */
+function ytStart(url){
+  try{
+    const t = new URL(url).searchParams.get('t') || '';
+    const m = t.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+    const sec = m ? (+m[1]||0)*3600 + (+m[2]||0)*60 + (+m[3]||0) : 0;
+    return sec ? `&start=${sec}` : '';
+  }catch(e){ return ''; }
+}
+function driveId(url){
+  try{
+    const u = new URL(url);
+    if(u.hostname !== 'drive.google.com') return null;
+    const m = u.pathname.match(/\/file\/d\/([^/]+)/);
+    return m ? m[1] : u.searchParams.get('id');
+  }catch(e){ return null; }
+}
 
 render();
 
