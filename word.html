@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#faf9f7">
-<title>말씀 · 에클레시아 춘천</title>
+<title>녹음 · 에클레시아 춘천</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-180.png">
@@ -325,7 +325,7 @@ function renderList(){
   app.innerHTML = `
     <div class="bar">
       <a class="home" href="./index.html" aria-label="홈으로"><img src="./logo-mark.png" alt=""></a>
-      <h1>말씀</h1>
+      <h1>녹음</h1>
       ${adminCtl}
       <button class="iconbtn" id="themeBtn" aria-label="화면 밝기 전환">${theme==='dark'?'☀️':'🌙'}</button>
     </div>
@@ -333,7 +333,7 @@ function renderList(){
       <input id="q" type="search" inputmode="search" placeholder="제목으로 찾기" autocomplete="off" value="${escapeAttr(searchTerm)}">
     </div>
     ${currentUser ? `<button class="addBtn" id="addBtn">+ 새 말씀</button>
-      <button class="addBtn" id="addAudioBtn">+ 새 집회 녹음</button>` : ''}
+      <button class="addBtn" id="addAudioBtn">+ 새 녹음</button>` : ''}
     <div id="listWrap"></div>
   `;
   const qi = document.getElementById('q');
@@ -362,7 +362,7 @@ function renderListItems(){
   const audios = audioWords().filter(match);
   const texts = textWords().filter(match);
   const audioHtml = audios.length ? `
-    <div class="secLbl">집회 녹음</div>
+    ${texts.length ? `<div class="secLbl">녹음</div>` : ''}
     <ul class="list">${audios.map(w=>`
       <li><button class="item" data-href="#/r/${w.id}">
         <span class="ico" aria-hidden="true">🎧</span>
@@ -377,7 +377,7 @@ function renderListItems(){
         <span class="cnt">${(w.slides||[]).length}구절</span>
       </button></li>`).join('')}</ul>` : '';
   wrap.innerHTML = (audioHtml + textHtml)
-    || `<div class="empty">${WORDS.length ? '검색 결과가 없습니다' : '등록된 말씀이 없습니다'}</div>`;
+    || `<div class="empty">${WORDS.length ? '검색 결과가 없습니다' : '등록된 녹음이 없습니다'}</div>`;
   wrap.querySelectorAll('.item').forEach(b=>{
     b.onclick = ()=> go(b.dataset.href);
   });
@@ -387,9 +387,9 @@ function renderListItems(){
 let playing = null;
 function playerHtml(url){
   const yt = ytId(url);
-  if(yt) return `<div class="pvideo"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(yt)}?autoplay=1&playsinline=1${ytStart(url)}" title="집회 녹음" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>`;
+  if(yt) return `<div class="pvideo"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(yt)}?autoplay=1&playsinline=1${ytStart(url)}" title="녹음" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>`;
   const gd = driveId(url);
-  if(gd) return `<div class="pvideo"><iframe src="https://drive.google.com/file/d/${encodeURIComponent(gd)}/preview" title="집회 녹음" allow="autoplay"></iframe></div>`;
+  if(gd) return `<div class="pvideo"><iframe src="https://drive.google.com/file/d/${encodeURIComponent(gd)}/preview" title="녹음" allow="autoplay"></iframe></div>`;
   return `<audio controls autoplay src="${escapeAttr(safeUrl(url))}"></audio>`;
 }
 
@@ -644,7 +644,7 @@ function openModal(mode, w){
   root.innerHTML = `
     <div class="backdrop" id="bd">
       <div class="sheet">
-        <h2>${audio ? (isEdit ? '집회 녹음 수정' : '새 집회 녹음') : (isEdit ? '말씀 수정' : '새 말씀')}</h2>
+        <h2>${audio ? (isEdit ? '녹음 수정' : '새 녹음') : (isEdit ? '말씀 수정' : '새 말씀')}</h2>
         ${fieldHtml}
         <div class="err" id="fErr" style="display:none"></div>
         <div class="btns">

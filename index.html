@@ -32,11 +32,11 @@
     padding:calc(var(--safe-t) + 56px) 24px calc(var(--safe-b) + 32px);
     display:flex;flex-direction:column;align-items:center;
   }
-  .hero{width:128px;height:128px;margin-bottom:20px;border-radius:30px;overflow:hidden;
-    box-shadow:0 10px 26px -10px rgba(60,40,10,.35)}
-  .hero img{width:100%;height:100%;display:block;object-fit:cover}
-  h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;text-align:center}
-  .tagline{font-size:13px;color:var(--muted);letter-spacing:.04em;margin-bottom:46px}
+  /* 로고 높이 = 제목 줄(30) + 간격(4) + 영문 줄(16) */
+  .brand{display:flex;align-items:center;gap:12px;margin-bottom:46px}
+  .brand .hero{width:50px;height:50px;flex:none;display:block;object-fit:cover;border-radius:12px}
+  h1{font-size:26px;line-height:30px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+  .tagline{font-size:13px;line-height:16px;color:var(--muted);letter-spacing:.04em}
   nav{width:100%;display:flex;flex-direction:column;gap:14px}
   .card{
     display:flex;align-items:center;gap:14px;width:100%;
@@ -58,15 +58,26 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="hero"><img src="./logo-mark.png" alt="에클레시아 춘천 로고"></div>
-  <h1>에클레시아 춘천</h1>
-  <div class="tagline">ECCLESIA CHUNCHEON</div>
+  <div class="brand">
+    <img class="hero" src="./logo-mark.png" alt="">
+    <div>
+      <h1>에클레시아 춘천</h1>
+      <div class="tagline">ECCLESIA CHUNCHEON</div>
+    </div>
+  </div>
 
   <nav>
     <a class="card" href="./hymnal.html">
       <div class="badge" style="background:#bcc65940">🎵</div>
       <div class="text">
         <div class="label">찬송가</div>
+      </div>
+      <div class="chev">›</div>
+    </a>
+    <a class="card" href="./word.html">
+      <div class="badge" style="background:#1e3a8a33">🎧</div>
+      <div class="text">
+        <div class="label">녹음</div>
       </div>
       <div class="chev">›</div>
     </a>
@@ -88,13 +99,6 @@
       <div class="badge" style="background:#80893f33">📊</div>
       <div class="text">
         <div class="label">차트</div>
-      </div>
-      <div class="chev">›</div>
-    </a>
-    <a class="card" href="./word.html">
-      <div class="badge" style="background:#1e3a8a33">📖</div>
-      <div class="text">
-        <div class="label">말씀</div>
       </div>
       <div class="chev">›</div>
     </a>
