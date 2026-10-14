@@ -1116,12 +1116,9 @@ function ytId(url){
 }
 function escapeAttr(s){ return escapeHtml(s).replace(/'/g,'&#39;'); }
 
-/* ---------- 서비스 워커 등록 (http/https 에서만; file:// 로 열면 건너뜀) ---------- */
-if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-}
 
 render();
 </script>
+<script src="./sw-register.js"></script>
 </body>
 </html>

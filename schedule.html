@@ -469,9 +469,7 @@ function secretTap(which){
 
 render();
 
-if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-}
 </script>
+<script src="./sw-register.js"></script>
 </body>
 </html>
