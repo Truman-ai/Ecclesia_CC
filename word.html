@@ -261,7 +261,7 @@ function textToWord(text){
   return { title, slides };
 }
 const isAudio = w => w.kind === 'audio';
-const textWords = () => WORDS.filter(w => !isAudio(w));
+const textWords = () => WORDS.filter(w => !w.kind);   // kind:'notice'(메인 공지)·'meta'(새 컨텐츠 표시)는 제외
 const audioWords = () => WORDS.filter(isAudio).sort((a,b)=> b.seq - a.seq);
 
 /* 녹음: 첫 블록 = 모임 제목, 이후 블록마다 '세션 제목' 줄 + 링크 줄 */
@@ -304,7 +304,7 @@ function render(){
   releaseWakeLock();
   if(r.view !== 'present') exitPresentChrome();
   if(r.view === 'list'){ playing = null; delete app.dataset.audioId; return renderList(); }
-  const w = WORDS.find(x => x.id === r.id);
+  const w = WORDS.find(x => x.id === r.id && (!x.kind || isAudio(x)));
   if(!w){
     if(loaded) go('#/'); else app.innerHTML = `<div class="loading">불러오는 중…</div>`;
     return;
@@ -377,7 +377,7 @@ function renderListItems(){
         <span class="cnt">${(w.slides||[]).length}구절</span>
       </button></li>`).join('')}</ul>` : '';
   wrap.innerHTML = (audioHtml + textHtml)
-    || `<div class="empty">${WORDS.length ? '검색 결과가 없습니다' : '등록된 녹음이 없습니다'}</div>`;
+    || `<div class="empty">${audioWords().length + textWords().length ? '검색 결과가 없습니다' : '등록된 녹음이 없습니다'}</div>`;
   wrap.querySelectorAll('.item').forEach(b=>{
     b.onclick = ()=> go(b.dataset.href);
   });
@@ -668,6 +668,7 @@ function openModal(mode, w){
       } else {
         await db.collection('words').add({ ...parsed, ...(audio ? {kind:'audio'} : {}), seq: Date.now() });
       }
+      markSectionUpdated('word');
       closeModal();
       if(audio && isEdit) render(); else go('#/');
     }catch(e){
@@ -719,6 +720,7 @@ function driveId(url){
 render();
 
 </script>
+<script src="./updates.js" data-section="word"></script>
 <script src="./sw-register.js"></script>
 </body>
 </html>

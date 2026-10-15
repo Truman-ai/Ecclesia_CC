@@ -619,6 +619,7 @@ async function seedHymns(){
     });
   });
   await batch.commit();
+  markSectionUpdated('hymnal');
 }
 
 /* ---------- 숨긴 관리자 진입: 상단바 오른쪽 두 영역 A→B→A→B (2.5초 안에) ---------- */
@@ -783,6 +784,7 @@ function openModal(mode, hymn){
     btn.disabled = true;
     try{
       await db.collection('hymns').doc(String(parsed.n)).set(parsed);
+      markSectionUpdated('hymnal');
       if(isEdit && parsed.n !== hymn.n){
         await db.collection('hymns').doc(String(hymn.n)).delete();
       }
@@ -1119,6 +1121,7 @@ function escapeAttr(s){ return escapeHtml(s).replace(/'/g,'&#39;'); }
 
 render();
 </script>
+<script src="./updates.js" data-section="hymnal"></script>
 <script src="./sw-register.js"></script>
 </body>
 </html>

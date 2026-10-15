@@ -324,6 +324,7 @@ function openModal(mode, post){
     try{
       if(isEdit) await db.collection('posts').doc(post.id).set(data);
       else await db.collection('posts').add(data);
+      markSectionUpdated('news');
       closeModal();
     }catch(e){
       err.textContent = '저장 실패: ' + e.message; err.style.display = 'block'; btn.disabled = false;
@@ -342,6 +343,7 @@ async function doDelete(id){
 render();
 
 </script>
+<script src="./updates.js" data-section="news"></script>
 <script src="./sw-register.js"></script>
 </body>
 </html>

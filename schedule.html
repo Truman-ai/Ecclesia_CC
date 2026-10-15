@@ -429,6 +429,7 @@ function openModal(mode, event){
       } else {
         await db.collection('events').add({ title, start, end, color: nextColor(), ...(link ? {link} : {}) });
       }
+      markSectionUpdated('schedule');
       closeModal();
     }catch(e){
       err.textContent = '저장에 실패했습니다: ' + e.message;
@@ -470,6 +471,7 @@ function secretTap(which){
 render();
 
 </script>
+<script src="./updates.js" data-section="schedule"></script>
 <script src="./sw-register.js"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 /* 에클레시아 춘천 찬송가 — 서비스 워커
    배포할 때마다 아래 CACHE 버전 숫자를 올리세요 (예: v1 -> v2).
    버전이 바뀌면 열려 있는 앱도 화면으로 돌아올 때 자동 새로고침됩니다 (sw-register.js). */
-const CACHE = 'hj-hymnal-v34';
+const CACHE = 'hj-hymnal-v35';
 const ASSETS = [
   './',
   './index.html',
@@ -15,7 +15,8 @@ const ASSETS = [
   './icon-512.png',
   './icon-180.png',
   './logo-mark.png',
-  './sw-register.js'
+  './sw-register.js',
+  './updates.js'
 ];
 
 self.addEventListener('install', e => {
