@@ -208,7 +208,7 @@ function nearestEvents(){
     const rank = s => s==='past' ? 1 : 0;
     if(rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
     return a.dist - b.dist;
-  }).slice(0,5);
+  }).slice(0,7);
 }
 function ddayLabel(e){
   return e.status==='ongoing' ? '진행중' : e.status==='past' ? '종료' : `D-${e.dist}`;
