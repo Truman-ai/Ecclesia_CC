@@ -204,11 +204,10 @@ function withDist(e){
   return { ...e, dist, status };
 }
 function nearestEvents(){
-  return EVENTS.map(withDist).sort((a,b)=>{
-    const rank = s => s==='past' ? 1 : 0;
-    if(rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
-    return a.dist - b.dist;
-  }).slice(0,7);
+  return EVENTS.map(withDist)
+    .filter(e => e.status !== 'past')
+    .sort((a,b) => a.dist - b.dist)
+    .slice(0,7);
 }
 function ddayLabel(e){
   return e.status==='ongoing' ? '진행중' : e.status==='past' ? '종료' : `D-${e.dist}`;
@@ -282,7 +281,7 @@ function render(){
         <div class="section-title">다가오는 일정</div>
         <div class="row-actions">${addBtn}</div>
       </div>
-      <div class="events">${near.length ? near.map(eventCard).join('') : '<div class="empty">등록된 일정이 없습니다</div>'}</div>
+      <div class="events">${near.length ? near.map(eventCard).join('') : '<div class="empty">다가오는 일정이 없습니다</div>'}</div>
     `;
   }
 
